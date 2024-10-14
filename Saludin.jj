@@ -12,7 +12,7 @@ import java.io.IOException;
 
 public class Saludin {
     // Lista para almacenar los errores léxicos
-    private List<String> erroresLexicos = new ArrayList<String>();
+    private List<String> erroresLexicos = new ArrayList<String>()
     //tresDirecciones
     static List<String> tresdirecciones= new ArrayList<String>();
     static int sumTemp=0;
