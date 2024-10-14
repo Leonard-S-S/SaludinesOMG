@@ -1,0 +1,7 @@
+ent x = 5;
+
+if (x > 5) then
+    x = x + 1;
+    x = x + 20;
+else
+    x = x - 1;

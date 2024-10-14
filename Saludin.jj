@@ -1,0 +1,558 @@
+options {
+  STATIC = false;
+}
+
+PARSER_BEGIN(Saludin)
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.io.IOException;
+
+public class Saludin {
+    // Lista para almacenar los errores léxicos
+    private List<String> erroresLexicos = new ArrayList<String>();
+    //tresDirecciones
+    static List<String> tresdirecciones= new ArrayList<String>();
+    static int sumTemp=0;
+    // Lista para almacenar los errores sintácticos
+    private List<String> erroresSintacticos = new ArrayList<String>();
+    // Lista para almacenar los errores semánticos
+    private List<String> erroresSemanticos = new ArrayList<String>();
+    // Tabla de símbolos para el análisis semántico
+    private Map<String, Integer> tablaSimbolos = new HashMap<String, Integer>();
+
+    // Contador de etiquetas para generación de código intermedio
+    static int etiquetaCount = 0;
+
+    // Método para generar etiquetas únicas
+    static String genEtiqueta() {
+        return "L" + etiquetaCount++;
+    }
+
+    public static void main(String args[]) throws ParseException, IOException {
+        Saludin parser = new Saludin(System.in);
+
+        parser.iniciarAnalisis();
+        parser.reportarErrores();
+        if (parser.erroresLexicos.isEmpty() && parser.erroresSintacticos.isEmpty() && parser.erroresSemanticos.isEmpty()) {
+            System.out.println("Análisis léxico, sintáctico y semántico exitoso.");
+        } else {
+            System.out.println("Se encontraron errores léxicos, sintácticos o semánticos.");
+        }
+    }
+
+        public void codeDirection(String op, String arg1, String arg2, String var) {
+            if (arg2 == null || arg2.isEmpty()) {
+                tresdirecciones.add(var + " = " + arg1);
+            } else {
+                tresdirecciones.add(var + " = " + arg1 + " " + op + " " + arg2);
+            }
+        }
+
+    static void ImpIntermedio() {
+        for (String sentencias : tresdirecciones) {
+            System.out.println(sentencias);
+        }
+    }
+
+    static String genTemporal() {
+        return "t" + sumTemp++;
+    }
+
+    public void iniciarAnalisis() throws ParseException {
+        while (true) {
+            try {
+                Inicio();
+                ImpIntermedio();
+                break;
+            } catch (ParseException e) {
+                agregarErrorSintactico(traducirMensajeError(e.getMessage()));
+                token = getNextToken();
+            }
+        }
+    }
+
+    // Método para agregar errores léxicos a la lista
+    public void agregarErrorLexico(String mensaje) {
+        erroresLexicos.add(mensaje);
+    }
+
+    // Método para agregar errores sintácticos a la lista
+    public void agregarErrorSintactico(String mensaje) {
+        erroresSintacticos.add(mensaje);
+    }
+
+    // Método para agregar errores semánticos a la lista
+    public void agregarErrorSemantico(String mensaje) {
+        erroresSemanticos.add(mensaje);
+    }
+
+    // Método para reportar todos los errores encontrados
+    public void reportarErrores() {
+        if (!erroresLexicos.isEmpty()) {
+            System.out.println("Lista de errores léxicos encontrados:");
+            for (String error : erroresLexicos) {
+                System.out.println(error);
+            }
+        }
+        if (!erroresSintacticos.isEmpty()) {
+            System.out.println("Lista de errores sintácticos encontrados:");
+            for (String error : erroresSintacticos) {
+                System.out.println(error);
+            }
+        }
+        if (!erroresSemanticos.isEmpty()) {
+            System.out.println("Lista de errores semánticos encontrados:");
+            for (String error : erroresSemanticos) {
+                System.out.println(error);
+            }
+        }
+    }
+
+    // Método para traducir mensajes de error
+    private String traducirMensajeError(String mensaje) {
+        return mensaje
+                .replace("Encountered", "Encontrado")
+                .replace("Was expecting one of:", "Se esperaba uno de los siguientes:")
+                .replace("at line", "en la línea")
+                .replace("column", "columna");
+    }
+
+    // Método para agregar una variable a la tabla de símbolos
+    public void agregarVariable(String nombre, String tipo) {
+        if (tablaSimbolos.containsKey(nombre)) {
+            int count = tablaSimbolos.get(nombre);
+            if (count >= 2) {
+                agregarErrorSemantico("Variable '" + nombre + "' ya declarada");
+            } else {
+                tablaSimbolos.put(nombre, count + 1);
+            }
+        } else {
+            tablaSimbolos.put(nombre, 1);
+        }
+    }
+
+    // Método para verificar si una variable está declarada
+    public void verificarVariableDeclarada(String nombre) {
+        if (!tablaSimbolos.containsKey(nombre)) {
+            agregarErrorSemantico("Variable '" + nombre + "' no declarada.");
+        }
+    }
+
+    // Método para verificar si un token es de un tipo numérico
+    private boolean esNumero(Token token) {
+        return token.kind == NUMERO;
+    }
+
+    // Método para verificar si un token es de tipo entero
+    private boolean esEntero(Token token) {
+        if (esNumero(token)) {
+            try {
+                Integer.parseInt(token.image.replace("\"", ""));
+                return true;
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    // Método para verificar si un token es de tipo real
+    private boolean esReal(Token token) {
+        if (esNumero(token)) {
+            try {
+                Double.parseDouble(token.image.replace("\"", ""));
+                return true;
+            } catch (NumberFormatException e) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    // Método para verificar si un token es de tipo booleano
+    private boolean esBooleano(Token token) {
+        return token.kind == TRUE || token.kind == FALSE;
+    }
+
+    // Método para verificar si un token es de tipo carácter
+    private boolean esCaracter(Token token) {
+        return token.kind == CARACTERES && token.image.length() == 3; 
+    }
+
+    /* En caso de que quiera cadena de caracteres
+    private boolean esCaracter(Token token) {
+        return token.kind == CARACTERES;  // Aceptar cualquier token de tipo CARACTERES
+    }
+    */
+}
+
+PARSER_END(Saludin)
+
+SKIP : { " " | "\t" | "\n" | "\r" }
+
+TOKEN : /* Operadores */ {
+          < SUMA: "+" >
+        | < RESTA: "-" >
+        | < MULTIPLICACION: "*" >
+        | < DIVISION: "/" >
+        | < ASIGNACION: "=" >
+        | < Y: "Y" >
+        | < O: "O" >
+        | < NO: "NO" >
+        | < IGUAL: "==" >
+        | < DIFERENTE: "!=" >
+        | < MAYOR_QUE: ">" >
+        | < MENOR_QUE: "<" >
+        | < MAYOR_O_IGUAL_QUE: ">=" >
+        | < MENOR_O_IGUAL_QUE: "<=" >
+    }
+    TOKEN : /* Palabras clave */ {
+          < SI: "if" >
+        | < ENTONCES: "then" >
+        | < SINO: "else" >
+        | < MIENTRAS: "while" >
+        | < HACER: "do" >
+        | < PARA: "for" >
+        | < HASTA: "until" >
+        | < LEER: "leer" >
+        | < ESCRIBIR: "escribir" >
+        | < ROMPER: "break" >
+    }
+    
+    TOKEN : /* Tipos de datos */ {
+          < ENTERO: "ent" >
+        | < REAL: "real" >
+        | < CARACTER: "car" >
+        | < BOOLEANO: "bool" >
+        | < TRUE: "verdadero" >
+        | < FALSE: "falso" >
+    }
+    
+    TOKEN : {
+          < IDENTIFICADOR: <LETRA> (<LETRA> | <DIGITO>)* >
+        | < #LETRA: ["a"-"z","A"-"Z","_"] >
+        | < #DIGITO: ["0"-"9"] >
+        | < NUMERO: (["0"-"9"])+ ("." (["0"-"9"])+)? >
+        | < CADENA: "\"" (~["\""])* "\"" >
+        | < CARACTERES: "'" (~["'"]) "'" >
+        | < PUNTO_Y_COMA: ";" >
+        | < PARENTESIS_ABRE: "(" >
+        | < PARENTESIS_CIERRA: ")" >
+        | < ERROR_TOKEN: ~[] > // Captura cualquier otro carácter no definido
+    }
+
+void Inicio() :
+{ }
+{
+    ( Declaracion() | Sentencia() | ErrorLexico() )* <EOF>
+}
+
+void Declaracion() :
+    {Token id; Token tipo; String valor = null;}
+    {
+        tipo = TipoDato() id = <IDENTIFICADOR> (<ASIGNACION> valor = Expresion() {
+            // Mover la verificación de tipos AQUÍ, dentro del bloque de asignación
+        Token tokenValor = getToken(0); // Ahora getToken(0) apunta al valor
+
+        if (tipo.kind == ENTERO && !esEntero(tokenValor)) {
+            agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un valor entero para la variable '" + id.image + "'.");
+        } else if (tipo.kind == REAL && !esReal(tokenValor)) {
+            agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un valor real para la variable '" + id.image + "'.");
+        } else if (tipo.kind == BOOLEANO && !esBooleano(tokenValor)) {
+            agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un valor booleano para la variable '" + id.image + "'.");
+        } else if (tipo.kind == CARACTERES && !esCaracter(tokenValor)) { // Corregido: CARACTERES en lugar de CARACTER
+            agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un carácter para la variable '" + id.image + "'.");
+        }
+    })? <PUNTO_Y_COMA> {
+        agregarVariable(id.image, tipo.image);
+    }
+}
+
+Token TipoDato() :
+{Token tipo;}
+{
+    tipo = <ENTERO> { return tipo; }
+    | tipo = <REAL> { return tipo; }
+    | tipo = <BOOLEANO> { return tipo; }
+    | tipo = <CARACTER> { return tipo; }
+}
+
+String Expresion() :
+{ String t1,t2;
+  Token opSum;}
+{
+    t1= Termino()(opSum=<SUMA> t2=Termino() {
+    String temp= genTemporal();
+    codeDirection(opSum.image, t1, t2, temp);
+    t1=temp;}
+    | opSum=<RESTA> t2=Termino(){
+    String temp= genTemporal();
+    codeDirection(opSum.image, t1, t2, temp);
+    t1=temp;})*
+    //| ((<IGUAL> | <DIFERENTE> | <MAYOR_QUE> | <MENOR_QUE> | <MAYOR_O_IGUAL_QUE> | <MENOR_O_IGUAL_QUE> ) Termino())*
+{return t1;}
+}
+
+String Termino() :
+{String t1, t2;
+ Token opMul;}
+{
+    t1=Factor()(opMul=<MULTIPLICACION> t2=Factor() {
+    String temp = genTemporal();
+    codeDirection(opMul.image, t1,t2,temp);
+    t1= temp;}
+    | opMul=<DIVISION> t2=Factor() {
+    String temp = genTemporal();
+    codeDirection(opMul.image, t1,t2,temp);
+    t1= temp;}
+    )*
+    {return t1;}
+}
+
+String Factor() :
+{Token t,id;
+String t2;}
+{
+    t=<NUMERO>{return t.image;} 
+    | id = <IDENTIFICADOR>{
+        verificarVariableDeclarada(id.image);
+        t2=token.image;
+        return t2;
+    } 
+    | t = <CADENA> {return t.image;} 
+    | t = <TRUE> {return t.image;} 
+    | t = <FALSE> {return t.image;} 
+    | t = <CARACTERES> {return t.image;} // Incluir la regla CARACTER
+    | <PARENTESIS_ABRE> t2 = Expresion() <PARENTESIS_CIERRA> {return t2;}
+}
+
+String ExpresionV3() :
+{ String t1, t2; Token op; }
+{
+    t1 = TerminoV3() ( (op = <SUMA> | op = <RESTA> | op = <IGUAL> | op = <DIFERENTE> | op = <MAYOR_QUE> | op = <MENOR_QUE> | op = <MAYOR_O_IGUAL_QUE> | op = <MENOR_O_IGUAL_QUE> ) t2 = TerminoV3() {
+        String temp = genTemporal();
+        codeDirection(op.image, t1, t2, temp);
+        t1 = temp;
+    })*
+    { return t1; }
+}
+
+String TerminoV3() :
+{ String t1, t2; Token op; }
+{
+    t1 = FactorV3() ( (op = <MULTIPLICACION> | op = <DIVISION> ) t2 = FactorV3() {
+        String temp = genTemporal();
+        codeDirection(op.image, t1, t2, temp);
+        t1 = temp;
+    })*
+    { return t1; }
+}
+
+String FactorV3() :
+{ Token id; }
+{
+    <NUMERO> { return token.image; }
+    | id = <IDENTIFICADOR> { 
+        verificarVariableDeclarada(id.image);
+        return id.image;
+    }
+    | <CADENA> { return token.image; }
+    | <TRUE> { return token.image; }
+    | <FALSE> { return token.image; }
+    | <PARENTESIS_ABRE> ExpresionV3() <PARENTESIS_CIERRA> { return token.image; }
+}
+
+void Sentencia() :
+{ }
+{
+    SentenciaIf() | SentenciaWhile() | SentenciaFor() | SentenciaEscribir() | SentenciaLeer() | SentenciaAsignacion() | SentenciaBreak()
+}
+
+void SentenciaIf() :
+{ String etiquetaInicioIf, etiquetaElse, etiquetaFinIf; String condicion; }
+{
+    <SI> <PARENTESIS_ABRE> condicion = ExpresionV2() <PARENTESIS_CIERRA> <ENTONCES> {
+        etiquetaInicioIf = genEtiqueta();
+        etiquetaElse = genEtiqueta();
+        etiquetaFinIf = genEtiqueta();
+        tresdirecciones.add("if " + condicion + " goto " + etiquetaInicioIf);
+        tresdirecciones.add("goto " + etiquetaElse);
+        tresdirecciones.add(etiquetaInicioIf + ":");
+    }
+    BloqueSentencias() {
+        tresdirecciones.add("goto " + etiquetaFinIf);
+        tresdirecciones.add(etiquetaElse + ":");
+    } ( <SINO> BloqueSentencias() )? {
+        tresdirecciones.add(etiquetaFinIf + ":");
+    }
+}
+
+void SentenciaWhile() :
+{ String etiquetaInicioWhile, etiquetaFinWhile; String condicion; }
+{
+    <MIENTRAS> <PARENTESIS_ABRE> condicion = ExpresionV2() <PARENTESIS_CIERRA> {
+        etiquetaInicioWhile = genEtiqueta();
+        etiquetaFinWhile = genEtiqueta();
+        tresdirecciones.add(etiquetaInicioWhile + ":");
+        tresdirecciones.add("t0 = " + condicion);
+        tresdirecciones.add("if t0 goto " + etiquetaInicioWhile );
+        tresdirecciones.add("goto " + etiquetaFinWhile);
+        tresdirecciones.add(etiquetaInicioWhile + "_body:");
+    }
+    BloqueSentencias() {
+        tresdirecciones.add("goto " + etiquetaInicioWhile);
+        tresdirecciones.add(etiquetaFinWhile + ":");
+    }
+}
+
+String ExpresionV2() :
+{ String t1, t2; Token op; }
+{
+    t1 = TerminoV2() ( (op = <SUMA> | op = <RESTA> | op = <IGUAL> | op = <DIFERENTE> | op = <MAYOR_QUE> | op = <MENOR_QUE> | op = <MAYOR_O_IGUAL_QUE> | op = <MENOR_O_IGUAL_QUE> ) t2 = TerminoV2() {
+        String temp = genTemporal();
+        codeDirection(op.image, t1, t2, temp);
+        t1 = temp;
+    })*
+    { return t1; }
+}
+
+String TerminoV2() :
+{ String t1, t2; Token op; }
+{
+    t1 = FactorV2() ( (op = <MULTIPLICACION> | op = <DIVISION> ) t2 = FactorV2() {
+        String temp = genTemporal();
+        codeDirection(op.image, t1, t2, temp);
+        t1 = temp;
+    })*
+    { return t1; }
+}
+
+String FactorV2() :
+{ Token id; }
+{
+    <NUMERO> { return token.image; }
+    | id = <IDENTIFICADOR> { 
+        verificarVariableDeclarada(id.image);
+        return id.image;
+    }
+    | <CADENA> { return token.image; }
+    | <TRUE> { return token.image; }
+    | <FALSE> { return token.image; }
+    | <PARENTESIS_ABRE> ExpresionV2() <PARENTESIS_CIERRA> { return token.image; }
+}
+
+void SentenciaFor() :
+{ String etiquetaInicioFor, etiquetaFinFor; String expInicio, expCondicion, expIncremento; }
+{
+    <PARA> <PARENTESIS_ABRE>  {
+        etiquetaInicioFor = genEtiqueta();
+        tresdirecciones.add(etiquetaInicioFor + ":");
+    }
+    expInicio = Asignacion() <PUNTO_Y_COMA> 
+    expCondicion = ExpresionV4() <PUNTO_Y_COMA>  {
+        etiquetaFinFor = genEtiqueta();
+        tresdirecciones.add("if " + expCondicion + " goto " + etiquetaInicioFor);
+        tresdirecciones.add("goto " + etiquetaFinFor);
+    }
+    expIncremento = Asignacion() <PARENTESIS_CIERRA> <HACER> 
+        BloqueSentencias() {
+            tresdirecciones.add(expIncremento); 
+            tresdirecciones.add("goto " + etiquetaInicioFor);
+            tresdirecciones.add(etiquetaFinFor + ":");
+    }
+}
+
+String Asignacion() :
+{ Token id; String exp; }
+{
+    id = <IDENTIFICADOR> <ASIGNACION> exp = ExpresionV4() { 
+        verificarVariableDeclarada(id.image);
+        codeDirection("=", exp, "", id.image);
+        return id.image + " = " + exp;
+    }
+}
+
+String ExpresionV4() :
+{ String t1, t2; Token op; }
+{
+    t1 = TerminoV4() ( (op = <SUMA> | op = <RESTA> | op = <IGUAL> | op = <DIFERENTE> | op = <MAYOR_QUE> | op = <MENOR_QUE> | op = <MAYOR_O_IGUAL_QUE> | op = <MENOR_O_IGUAL_QUE> ) t2 = TerminoV4() {
+        String temp = genTemporal();
+        codeDirection(op.image, t1, t2, temp);
+        t1 = temp;
+    })*
+    { return t1; }
+}
+
+String TerminoV4() :
+{ String t1, t2; Token op; }
+{
+    t1 = FactorV4() ( (op = <MULTIPLICACION> | op = <DIVISION> ) t2 = FactorV4() {
+        String temp = genTemporal();
+        codeDirection(op.image, t1, t2, temp);
+        t1 = temp;
+    })*
+    { return t1; }
+}
+
+String FactorV4() :
+{ Token id; }
+{
+    <NUMERO> { return token.image; }
+    | id = <IDENTIFICADOR> { 
+        verificarVariableDeclarada(id.image);
+        return id.image;
+    }
+    | <CADENA> { return token.image; }
+    | <TRUE> { return token.image; }
+    | <FALSE> { return token.image; }
+    | <PARENTESIS_ABRE> ExpresionV4() <PARENTESIS_CIERRA> { return token.image; }
+}
+
+void SentenciaEscribir() :
+{ }
+{
+    <ESCRIBIR> <PARENTESIS_ABRE> Expresion() <PARENTESIS_CIERRA> <PUNTO_Y_COMA>
+}
+
+void SentenciaLeer() :
+{Token id;}
+{
+    <LEER> <PARENTESIS_ABRE> id = <IDENTIFICADOR> <PARENTESIS_CIERRA> <PUNTO_Y_COMA> { 
+        verificarVariableDeclarada(id.image); 
+    }
+}
+
+void SentenciaAsignacion() :
+{Token id;
+ String exp;}
+{
+    id = <IDENTIFICADOR> <ASIGNACION> exp= Expresion() <PUNTO_Y_COMA> {
+        verificarVariableDeclarada(id.image);
+        // Aquí puedes agregar la lógica para verificar la compatibilidad de tipos
+        // verificarCompatibilidadTipos(id.image, tipoEsperado);
+        codeDirection("=",exp,"",id.image);//para agregarlo a la lista
+    }
+}
+
+void SentenciaBreak() :
+{ }
+{
+    <ROMPER> <PUNTO_Y_COMA>
+}
+
+void ErrorLexico() :
+{Token t;}
+{
+    t = <ERROR_TOKEN> { 
+        agregarErrorLexico("Carácter inesperado '" + t.image + "' en la línea " + t.beginLine + ", columna " + t.beginColumn);
+    }
+}
+
+void BloqueSentencias() :
+{ }
+{
+    ( Declaracion() | Sentencia() )*
+}

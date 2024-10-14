@@ -1,0 +1,7 @@
+ENTERO x = 10;    
+REAL y = 3.14;    
+BOOLEANO z = NO; 
+DESCONOCIDO w = 20;  
+x @ y;           
+x := 5;          
+$variable = 100; 
