@@ -1,5 +1,6 @@
 options {
   STATIC = false;
+  LOOKAHEAD = 3;
 }
 
 PARSER_BEGIN(Saludin)
@@ -8,14 +9,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 
 public class Saludin {
     // Lista para almacenar los errores léxicos
     private List<String> erroresLexicos = new ArrayList<String>();
-    //tresDirecciones
-    static List<String> tresdirecciones= new ArrayList<String>();
-    static int sumTemp=0;
     // Lista para almacenar los errores sintácticos
     private List<String> erroresSintacticos = new ArrayList<String>();
     // Lista para almacenar los errores semánticos
@@ -25,10 +25,20 @@ public class Saludin {
 
     // Contador de etiquetas para generación de código intermedio
     static int etiquetaCount = 0;
+    // Contador de temporales
+    static int sumTemp = 0;
+
+    // Lista para almacenar los cuádruplos
+    static List<String[]> cuadruplos = new ArrayList<String[]>();
 
     // Método para generar etiquetas únicas
     static String genEtiqueta() {
         return "L" + etiquetaCount++;
+    }
+
+    // Método para generar temporales únicos
+    static String genTemporal() {
+        return "t" + sumTemp++;
     }
 
     public static void main(String args[]) throws ParseException, IOException {
@@ -43,23 +53,30 @@ public class Saludin {
         }
     }
 
-        public void codeDirection(String op, String arg1, String arg2, String var) {
-            if (arg2 == null || arg2.isEmpty()) {
-                tresdirecciones.add(var + " = " + arg1);
-            } else {
-                tresdirecciones.add(var + " = " + arg1 + " " + op + " " + arg2);
-            }
-        }
+    public void codeDirection(String op, String arg1, String arg2, String result) {
+        cuadruplos.add(new String[]{op, arg1, arg2, result});
+    }
 
     static void ImpIntermedio() {
-        for (String sentencias : tresdirecciones) {
-            System.out.println(sentencias);
+    BufferedWriter writer = null;
+    try {
+        writer = new BufferedWriter(new FileWriter("cuadruplos.txt"));
+        for (String[] cuadruplo : cuadruplos) {
+            writer.write(String.join(" | ", cuadruplo));
+            writer.newLine();
+        }
+    } catch (IOException e) {
+        System.err.println("Error writing to file: " + e.getMessage());
+    } finally {
+        if (writer != null) {
+            try {
+                writer.close();
+            } catch (IOException e) {
+                System.err.println("Error closing the writer: " + e.getMessage());
+            }
         }
     }
-
-    static String genTemporal() {
-        return "t" + sumTemp++;
-    }
+}
 
     public void iniciarAnalisis() throws ParseException {
         while (true) {
@@ -179,7 +196,7 @@ public class Saludin {
 
     // Método para verificar si un token es de tipo carácter
     private boolean esCaracter(Token token) {
-        return token.kind == CARACTERES && token.image.length() == 3; 
+        return token.kind == CARACTERES && token.image.length() == 3;
     }
 
     /* En caso de que quiera cadena de caracteres
@@ -221,7 +238,7 @@ TOKEN : /* Operadores */ {
         | < ESCRIBIR: "escribir" >
         | < ROMPER: "break" >
     }
-    
+
     TOKEN : /* Tipos de datos */ {
           < ENTERO: "ent" >
         | < REAL: "real" >
@@ -229,8 +246,15 @@ TOKEN : /* Operadores */ {
         | < BOOLEANO: "bool" >
         | < TRUE: "verdadero" >
         | < FALSE: "falso" >
+        | < ARR: "arr" >
+        | < MATRIZ: "matriz" >
     }
-    
+
+    TOKEN : {
+          < CORCHETE_ABRE: "[" >
+        | < CORCHETE_CIERRA: "]" >
+}
+
     TOKEN : {
           < IDENTIFICADOR: <LETRA> (<LETRA> | <DIGITO>)* >
         | < #LETRA: ["a"-"z","A"-"Z","_"] >
@@ -250,25 +274,10 @@ void Inicio() :
     ( Declaracion() | Sentencia() | ErrorLexico() )* <EOF>
 }
 
-void Declaracion() :
-    {Token id; Token tipo; String valor = null;}
-    {
-        tipo = TipoDato() id = <IDENTIFICADOR> (<ASIGNACION> valor = Expresion() {
-            // Mover la verificación de tipos AQUÍ, dentro del bloque de asignación
-        Token tokenValor = getToken(0); // Ahora getToken(0) apunta al valor
-
-        if (tipo.kind == ENTERO && !esEntero(tokenValor)) {
-            agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un valor entero para la variable '" + id.image + "'.");
-        } else if (tipo.kind == REAL && !esReal(tokenValor)) {
-            agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un valor real para la variable '" + id.image + "'.");
-        } else if (tipo.kind == BOOLEANO && !esBooleano(tokenValor)) {
-            agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un valor booleano para la variable '" + id.image + "'.");
-        } else if (tipo.kind == CARACTERES && !esCaracter(tokenValor)) { // Corregido: CARACTERES en lugar de CARACTER
-            agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un carácter para la variable '" + id.image + "'.");
-        }
-    })? <PUNTO_Y_COMA> {
-        agregarVariable(id.image, tipo.image);
-    }
+void Sentencia() :
+{ }
+{
+    SentenciaIf() | SentenciaWhile() | SentenciaFor() | SentenciaEscribir() | SentenciaLeer() | SentenciaAsignacion() | SentenciaBreak() | DeclaracionArrays()
 }
 
 Token TipoDato() :
@@ -280,168 +289,94 @@ Token TipoDato() :
     | tipo = <CARACTER> { return tipo; }
 }
 
-String Expresion() :
-{ String t1,t2;
-  Token opSum;}
+void Declaracion() :
+{Token id; Token tipo; String valor = null;}
 {
-    t1= Termino()(opSum=<SUMA> t2=Termino() {
-    String temp= genTemporal();
-    codeDirection(opSum.image, t1, t2, temp);
-    t1=temp;}
-    | opSum=<RESTA> t2=Termino(){
-    String temp= genTemporal();
-    codeDirection(opSum.image, t1, t2, temp);
-    t1=temp;})*
-    //| ((<IGUAL> | <DIFERENTE> | <MAYOR_QUE> | <MENOR_QUE> | <MAYOR_O_IGUAL_QUE> | <MENOR_O_IGUAL_QUE> ) Termino())*
-{return t1;}
+    tipo = TipoDato() id = <IDENTIFICADOR> (<ASIGNACION> valor = Expresion() {
+        Token tokenValor = getToken(0);
+
+        if (tipo.kind == ENTERO && !esEntero(tokenValor)) {
+            agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un valor entero para la variable '" + id.image + "'.");
+        } else if (tipo.kind == REAL && !esReal(tokenValor)) {
+            agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un valor real para la variable '" + id.image + "'.");
+        } else if (tipo.kind == BOOLEANO && !esBooleano(tokenValor)) {
+            agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un valor booleano para la variable '" + id.image + "'.");
+        } else if (tipo.kind == CARACTERES && !esCaracter(tokenValor)) {
+            agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un carácter para la variable '" + id.image + "'.");
+        }
+    })? <PUNTO_Y_COMA> {
+        agregarVariable(id.image, tipo.image);
+    }
+}
+String Expresion() :
+{ String t1, t2; Token op; }
+{
+    t1 = Termino() ( (op = <SUMA> | op = <RESTA> | op = <IGUAL> | op = <DIFERENTE> | op = <MAYOR_QUE> | op = <MENOR_QUE> | op = <MAYOR_O_IGUAL_QUE> | op = <MENOR_O_IGUAL_QUE> ) t2 = Termino() {
+        String temp = genTemporal();
+        codeDirection(op.image, t1, t2, temp);
+        t1 = temp;
+    })*
+    { return t1; }
 }
 
 String Termino() :
-{String t1, t2;
- Token opMul;}
+{ String t1, t2; Token op; }
 {
-    t1=Factor()(opMul=<MULTIPLICACION> t2=Factor() {
-    String temp = genTemporal();
-    codeDirection(opMul.image, t1,t2,temp);
-    t1= temp;}
-    | opMul=<DIVISION> t2=Factor() {
-    String temp = genTemporal();
-    codeDirection(opMul.image, t1,t2,temp);
-    t1= temp;}
-    )*
-    {return t1;}
+    t1 = Factor() ( (op = <MULTIPLICACION> | op = <DIVISION> ) t2 = Factor() {
+        String temp = genTemporal();
+        codeDirection(op.image, t1, t2, temp);
+        t1 = temp;
+    })*
+    { return t1; }
 }
 
 String Factor() :
-{Token t,id;
-String t2;}
-{
-    t=<NUMERO>{return t.image;} 
-    | id = <IDENTIFICADOR>{
-        verificarVariableDeclarada(id.image);
-        t2=token.image;
-        return t2;
-    } 
-    | t = <CADENA> {return t.image;} 
-    | t = <TRUE> {return t.image;} 
-    | t = <FALSE> {return t.image;} 
-    | t = <CARACTERES> {return t.image;} // Incluir la regla CARACTER
-    | <PARENTESIS_ABRE> t2 = Expresion() <PARENTESIS_CIERRA> {return t2;}
-}
-
-String ExpresionV3() :
-{ String t1, t2; Token op; }
-{
-    t1 = TerminoV3() ( (op = <SUMA> | op = <RESTA> | op = <IGUAL> | op = <DIFERENTE> | op = <MAYOR_QUE> | op = <MENOR_QUE> | op = <MAYOR_O_IGUAL_QUE> | op = <MENOR_O_IGUAL_QUE> ) t2 = TerminoV3() {
-        String temp = genTemporal();
-        codeDirection(op.image, t1, t2, temp);
-        t1 = temp;
-    })*
-    { return t1; }
-}
-
-String TerminoV3() :
-{ String t1, t2; Token op; }
-{
-    t1 = FactorV3() ( (op = <MULTIPLICACION> | op = <DIVISION> ) t2 = FactorV3() {
-        String temp = genTemporal();
-        codeDirection(op.image, t1, t2, temp);
-        t1 = temp;
-    })*
-    { return t1; }
-}
-
-String FactorV3() :
-{ Token id; }
+{ String t; }
 {
     <NUMERO> { return token.image; }
-    | id = <IDENTIFICADOR> { 
-        verificarVariableDeclarada(id.image);
-        return id.image;
-    }
-    | <CADENA> { return token.image; }
-    | <TRUE> { return token.image; }
-    | <FALSE> { return token.image; }
-    | <PARENTESIS_ABRE> ExpresionV3() <PARENTESIS_CIERRA> { return token.image; }
-}
-
-void Sentencia() :
-{ }
-{
-    SentenciaIf() | SentenciaWhile() | SentenciaFor() | SentenciaEscribir() | SentenciaLeer() | SentenciaAsignacion() | SentenciaBreak()
+  | <IDENTIFICADOR> { verificarVariableDeclarada(token.image); return token.image; }
+  | <CADENA> { return token.image; }
+  | <TRUE> { return token.image; }
+  | <FALSE> { return token.image; }
+  | <PARENTESIS_ABRE> t = Expresion() <PARENTESIS_CIERRA> { return t; }
+  | <IDENTIFICADOR> <CORCHETE_ABRE> t = Expresion() <CORCHETE_CIERRA> { verificarVariableDeclarada(token.image); return token.image + "[" + t + "]"; }
+  | <IDENTIFICADOR> <CORCHETE_ABRE> t = Expresion() <CORCHETE_CIERRA> <CORCHETE_ABRE> t = Expresion() <CORCHETE_CIERRA> { verificarVariableDeclarada(token.image); return token.image + "[" + t + "][" + t + "]"; }
 }
 
 void SentenciaIf() :
 { String etiquetaInicioIf, etiquetaElse, etiquetaFinIf; String condicion; }
 {
-    <SI> <PARENTESIS_ABRE> condicion = ExpresionV2() <PARENTESIS_CIERRA> <ENTONCES> {
+    <SI> <PARENTESIS_ABRE> condicion = Expresion() <PARENTESIS_CIERRA> <ENTONCES> {
         etiquetaInicioIf = genEtiqueta();
         etiquetaElse = genEtiqueta();
         etiquetaFinIf = genEtiqueta();
-        tresdirecciones.add("if " + condicion + " goto " + etiquetaInicioIf);
-        tresdirecciones.add("goto " + etiquetaElse);
-        tresdirecciones.add(etiquetaInicioIf + ":");
+        cuadruplos.add(new String[]{"if", condicion, "", etiquetaInicioIf});
+        cuadruplos.add(new String[]{"goto", "", "", etiquetaElse});
+        cuadruplos.add(new String[]{"label", "", "", etiquetaInicioIf});
     }
     BloqueSentencias() {
-        tresdirecciones.add("goto " + etiquetaFinIf);
-        tresdirecciones.add(etiquetaElse + ":");
+        cuadruplos.add(new String[]{"goto", "", "", etiquetaFinIf});
+        cuadruplos.add(new String[]{"label", "", "", etiquetaElse});
     } ( <SINO> BloqueSentencias() )? {
-        tresdirecciones.add(etiquetaFinIf + ":");
+        cuadruplos.add(new String[]{"label", "", "", etiquetaFinIf});
     }
 }
 
 void SentenciaWhile() :
 { String etiquetaInicioWhile, etiquetaFinWhile; String condicion; }
 {
-    <MIENTRAS> <PARENTESIS_ABRE> condicion = ExpresionV2() <PARENTESIS_CIERRA> {
+    <MIENTRAS> <PARENTESIS_ABRE> condicion = Expresion() <PARENTESIS_CIERRA> {
         etiquetaInicioWhile = genEtiqueta();
         etiquetaFinWhile = genEtiqueta();
-        tresdirecciones.add(etiquetaInicioWhile + ":");
-        tresdirecciones.add("t0 = " + condicion);
-        tresdirecciones.add("if t0 goto " + etiquetaInicioWhile );
-        tresdirecciones.add("goto " + etiquetaFinWhile);
-        tresdirecciones.add(etiquetaInicioWhile + "_body:");
+        codeDirection("label", "", "", etiquetaInicioWhile);
+        codeDirection("if", condicion, "", etiquetaInicioWhile);
+        codeDirection("goto", "", "", etiquetaFinWhile);
+        codeDirection("label", "", "", etiquetaInicioWhile + "_body");
     }
     BloqueSentencias() {
-        tresdirecciones.add("goto " + etiquetaInicioWhile);
-        tresdirecciones.add(etiquetaFinWhile + ":");
+        codeDirection("goto", "", "", etiquetaInicioWhile);
+        codeDirection("label", "", "", etiquetaFinWhile);
     }
-}
-
-String ExpresionV2() :
-{ String t1, t2; Token op; }
-{
-    t1 = TerminoV2() ( (op = <SUMA> | op = <RESTA> | op = <IGUAL> | op = <DIFERENTE> | op = <MAYOR_QUE> | op = <MENOR_QUE> | op = <MAYOR_O_IGUAL_QUE> | op = <MENOR_O_IGUAL_QUE> ) t2 = TerminoV2() {
-        String temp = genTemporal();
-        codeDirection(op.image, t1, t2, temp);
-        t1 = temp;
-    })*
-    { return t1; }
-}
-
-String TerminoV2() :
-{ String t1, t2; Token op; }
-{
-    t1 = FactorV2() ( (op = <MULTIPLICACION> | op = <DIVISION> ) t2 = FactorV2() {
-        String temp = genTemporal();
-        codeDirection(op.image, t1, t2, temp);
-        t1 = temp;
-    })*
-    { return t1; }
-}
-
-String FactorV2() :
-{ Token id; }
-{
-    <NUMERO> { return token.image; }
-    | id = <IDENTIFICADOR> { 
-        verificarVariableDeclarada(id.image);
-        return id.image;
-    }
-    | <CADENA> { return token.image; }
-    | <TRUE> { return token.image; }
-    | <FALSE> { return token.image; }
-    | <PARENTESIS_ABRE> ExpresionV2() <PARENTESIS_CIERRA> { return token.image; }
 }
 
 void SentenciaFor() :
@@ -449,66 +384,30 @@ void SentenciaFor() :
 {
     <PARA> <PARENTESIS_ABRE>  {
         etiquetaInicioFor = genEtiqueta();
-        tresdirecciones.add(etiquetaInicioFor + ":");
+        cuadruplos.add(new String[]{"label", "", "", etiquetaInicioFor});
     }
-    expInicio = Asignacion() <PUNTO_Y_COMA> 
-    expCondicion = ExpresionV4() <PUNTO_Y_COMA>  {
+    expInicio = Asignacion() <PUNTO_Y_COMA>
+    expCondicion = Expresion() <PUNTO_Y_COMA>  {
         etiquetaFinFor = genEtiqueta();
-        tresdirecciones.add("if " + expCondicion + " goto " + etiquetaInicioFor);
-        tresdirecciones.add("goto " + etiquetaFinFor);
+        cuadruplos.add(new String[]{"if", expCondicion, "", etiquetaInicioFor});
+        cuadruplos.add(new String[]{"goto", "", "", etiquetaFinFor});
     }
-    expIncremento = Asignacion() <PARENTESIS_CIERRA> <HACER> 
+    expIncremento = Asignacion() <PARENTESIS_CIERRA> <HACER>
         BloqueSentencias() {
-            tresdirecciones.add(expIncremento); 
-            tresdirecciones.add("goto " + etiquetaInicioFor);
-            tresdirecciones.add(etiquetaFinFor + ":");
+            cuadruplos.add(new String[]{expIncremento, "", "", ""});
+            cuadruplos.add(new String[]{"goto", "", "", etiquetaInicioFor});
+            cuadruplos.add(new String[]{"label", "", "", etiquetaFinFor});
     }
 }
 
 String Asignacion() :
 { Token id; String exp; }
 {
-    id = <IDENTIFICADOR> <ASIGNACION> exp = ExpresionV4() { 
+    id = <IDENTIFICADOR> <ASIGNACION> exp = Expresion() {
         verificarVariableDeclarada(id.image);
         codeDirection("=", exp, "", id.image);
         return id.image + " = " + exp;
     }
-}
-
-String ExpresionV4() :
-{ String t1, t2; Token op; }
-{
-    t1 = TerminoV4() ( (op = <SUMA> | op = <RESTA> | op = <IGUAL> | op = <DIFERENTE> | op = <MAYOR_QUE> | op = <MENOR_QUE> | op = <MAYOR_O_IGUAL_QUE> | op = <MENOR_O_IGUAL_QUE> ) t2 = TerminoV4() {
-        String temp = genTemporal();
-        codeDirection(op.image, t1, t2, temp);
-        t1 = temp;
-    })*
-    { return t1; }
-}
-
-String TerminoV4() :
-{ String t1, t2; Token op; }
-{
-    t1 = FactorV4() ( (op = <MULTIPLICACION> | op = <DIVISION> ) t2 = FactorV4() {
-        String temp = genTemporal();
-        codeDirection(op.image, t1, t2, temp);
-        t1 = temp;
-    })*
-    { return t1; }
-}
-
-String FactorV4() :
-{ Token id; }
-{
-    <NUMERO> { return token.image; }
-    | id = <IDENTIFICADOR> { 
-        verificarVariableDeclarada(id.image);
-        return id.image;
-    }
-    | <CADENA> { return token.image; }
-    | <TRUE> { return token.image; }
-    | <FALSE> { return token.image; }
-    | <PARENTESIS_ABRE> ExpresionV4() <PARENTESIS_CIERRA> { return token.image; }
 }
 
 void SentenciaEscribir() :
@@ -520,8 +419,8 @@ void SentenciaEscribir() :
 void SentenciaLeer() :
 {Token id;}
 {
-    <LEER> <PARENTESIS_ABRE> id = <IDENTIFICADOR> <PARENTESIS_CIERRA> <PUNTO_Y_COMA> { 
-        verificarVariableDeclarada(id.image); 
+    <LEER> <PARENTESIS_ABRE> id = <IDENTIFICADOR> <PARENTESIS_CIERRA> <PUNTO_Y_COMA> {
+        verificarVariableDeclarada(id.image);
     }
 }
 
@@ -531,9 +430,7 @@ void SentenciaAsignacion() :
 {
     id = <IDENTIFICADOR> <ASIGNACION> exp= Expresion() <PUNTO_Y_COMA> {
         verificarVariableDeclarada(id.image);
-        // Aquí puedes agregar la lógica para verificar la compatibilidad de tipos
-        // verificarCompatibilidadTipos(id.image, tipoEsperado);
-        codeDirection("=",exp,"",id.image);//para agregarlo a la lista
+        codeDirection("=", exp, "", id.image);
     }
 }
 
@@ -546,7 +443,7 @@ void SentenciaBreak() :
 void ErrorLexico() :
 {Token t;}
 {
-    t = <ERROR_TOKEN> { 
+    t = <ERROR_TOKEN> {
         agregarErrorLexico("Carácter inesperado '" + t.image + "' en la línea " + t.beginLine + ", columna " + t.beginColumn);
     }
 }
@@ -555,4 +452,14 @@ void BloqueSentencias() :
 { }
 {
     ( Declaracion() | Sentencia() )*
+}
+
+
+void DeclaracionArrays():
+{}
+{
+    try{<CORCHETE_ABRE> }catch(ParseException ex){System.out.println("Error sintáctico, no se encontró corchete izquierdo [ en la línea "+token.beginLine+", columna "+token.beginColumn+" después de "+token.image);}
+    try{<NUMERO>}catch(ParseException ex){System.out.println("Error sintáctico, no se encontró un número en la línea "+token.beginLine+", columna "+token.beginColumn+" después de "+token.image);}
+    try{<CORCHETE_CIERRA> }catch(ParseException ex){System.out.println("Error sintáctico, no se encontró corchete derecho ] en la línea "+token.beginLine+", columna "+token.beginColumn+" después de "+token.image);}
+    (DeclaracionArrays() )*
 }
