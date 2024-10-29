@@ -31,6 +31,7 @@ public class Saludin {
 
     // Lista para almacenar los cuádruplos
     static List<String[]> cuadruplos = new ArrayList<String[]>();
+    static List<String[]> cuadruplosOptimizado = new ArrayList<String[]>();
 
     // Método para generar etiquetas únicas
     static String genEtiqueta() {
@@ -66,6 +67,8 @@ public class Saludin {
             writer.write("(" + String.join(", ", cuadruplo) + ")");
             writer.newLine();
         }
+        cuadruplosOptimizado= optimizarCuadruplas(cuadruplos);
+        ImpIntermedioOpt();
     } catch (IOException e) {
         System.err.println("Error writing to file: " + e.getMessage());
     } finally {
@@ -78,6 +81,100 @@ public class Saludin {
         }
     }
 }
+
+
+static void ImpIntermedioOpt() {
+    BufferedWriter writer = null;
+    try {
+        writer = new BufferedWriter(new FileWriter("cuadruplosOPtimizado.txt"));
+        for (String[] cuadruplo : cuadruplosOptimizado) {
+            writer.write("(" + String.join(", ", cuadruplo) + ")");
+            writer.newLine();
+        }
+    } catch (IOException e) {
+        System.err.println("Error writing to file: " + e.getMessage());
+    } finally {
+        if (writer != null) {
+            try {
+                writer.close();
+            } catch (IOException e) {
+                System.err.println("Error closing the writer: " + e.getMessage());
+            }
+        }
+    }
+}
+
+//IMPRIMECuadruplas Optimizadas por propagacion_de_Constantes
+public static List<String[]> optimizarCuadruplas(List<String[]> cuadruplasOriginal) {
+        List<String[]> cuadruplasOptimizadas = new ArrayList<String[]>();
+        Map<String, String> constantes = new HashMap<String, String>();
+
+        for (String[] cuadrupla : cuadruplasOriginal) {
+            String operador = cuadrupla[0];
+            String arg1 = cuadrupla[1];
+            String arg2 = cuadrupla[2];
+            String resultado = cuadrupla[3];
+
+            switch (operador) {
+                case "=":
+                    // Si arg1 es una constante, la guardamos en el mapa
+                    if (esNumero(arg1)) {
+                        constantes.put(resultado, arg1);  // Guardar la constante
+                    } else if (constantes.containsKey(arg1)) {
+                        cuadrupla[1] = constantes.get(arg1);  // Reemplazar si es constante
+                    }
+                    break;
+
+                case "+":
+                case "*":
+                case "-":
+                case "/":
+                    // Reemplazar argumentos si son constantes
+                    if (constantes.containsKey(arg1)) {
+                        cuadrupla[1] = constantes.get(arg1);
+                    }
+                    if (constantes.containsKey(arg2)) {
+                        cuadrupla[2] = constantes.get(arg2);
+                    }
+
+                    // Si ambos son números, realizar la operación
+                    if (esNumero(cuadrupla[1]) && esNumero(cuadrupla[2])) {
+                        int resultadoOpt = evaluar(operador, Integer.parseInt(cuadrupla[1]), Integer.parseInt(cuadrupla[2]));
+                        cuadrupla[0] = "=";
+                        cuadrupla[1] = String.valueOf(resultadoOpt);
+                        cuadrupla[2] = "";  // Arg2 ya no se necesita
+                    }
+                    break;
+            }
+
+            // Añadir la cuádrupla optimizada a la nueva lista
+            cuadruplasOptimizadas.add(cuadrupla);
+        }
+
+        return cuadruplasOptimizadas;
+    }
+//////////////////////////////////////FUNCIONES PARA OPTIMIZAR
+// Función auxiliar para verificar si un valor es numérico
+    static boolean esNumero(String str) {
+        try {
+            Integer.parseInt(str);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    // Función para evaluar las operaciones aritméticas
+   static int evaluar(String operador, int arg1, int arg2) {
+        switch (operador) {
+            case "+": return arg1 + arg2;
+            case "-": return arg1 - arg2;
+            case "*": return arg1 * arg2;
+            case "/": return arg1 / arg2;
+            default: throw new IllegalArgumentException("Operador no válido: " + operador);
+        }
+    }
+///////////////////////////////////////////////////
 
     public void iniciarAnalisis() throws ParseException {
         while (true) {
