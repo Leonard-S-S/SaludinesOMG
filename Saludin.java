@@ -84,7 +84,7 @@ static void ImpIntermedioOpt() {
     try {
         writer = new BufferedWriter(new FileWriter("cuadruplosOPtimizado.txt"));
         for (String[] cuadruplo : cuadruplosOptimizado) {
-            writer.write(String.join(" , ", cuadruplo));
+            writer.write("(" + String.join(", ", cuadruplo) + ")");
             writer.newLine();
         }
     } catch (IOException e) {
