@@ -1,0 +1,7 @@
+ent a = 5;
+ent b = 10;
+ent c = 5;
+ent d= 3;
+ent z=0;
+
+z=(a+b)+(c*d);

@@ -4,7 +4,7 @@ options {
 }
 
 PARSER_BEGIN(Saludin)
-//cls
+//xd vamos a ver si sirve
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +22,7 @@ public class Saludin {
     private List<String> erroresSemanticos = new ArrayList<String>();
     // Tabla de símbolos para el análisis semántico
     private Map<String, Integer> tablaSimbolos = new HashMap<String, Integer>();
+
 
     // Contador de etiquetas para generación de código intermedio
     static int etiquetaCount = 0;
