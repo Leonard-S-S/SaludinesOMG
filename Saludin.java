@@ -102,53 +102,52 @@ static void ImpIntermedioOpt() {
 
 //IMPRIMECuadruplas Optimizadas por propagacion_de_Constantes
 public static List<String[]> optimizarCuadruplas(List<String[]> cuadruplasOriginal) {
-        List<String[]> cuadruplasOptimizadas = new ArrayList<String[]>();
-        Map<String, String> constantes = new HashMap<String, String>();
+    List<String[]> cuadruplasOptimizadas = new ArrayList<String[]>();
+    Map<String, String> constantes = new HashMap<String, String>();
 
-        for (String[] cuadrupla : cuadruplasOriginal) {
-            String operador = cuadrupla[0];
-            String arg1 = cuadrupla[1];
-            String arg2 = cuadrupla[2];
-            String resultado = cuadrupla[3];
+    for (String[] cuadrupla : cuadruplasOriginal) {
+        String operador = cuadrupla[0];
+        String arg1 = cuadrupla[1];
+        String arg2 = cuadrupla[2];
+        String resultado = cuadrupla[3];
 
-            switch (operador) {
-                case "=":
-                    // Si arg1 es una constante, la guardamos en el mapa
-                    if (esNumero(arg1)) {
-                        constantes.put(resultado, arg1);  // Guardar la constante
-                    } else if (constantes.containsKey(arg1)) {
-                        cuadrupla[1] = constantes.get(arg1);  // Reemplazar si es constante
-                    }
-                    break;
-
-                case "+":
-                case "*":
-                case "-":
-                case "/":
-                    // Reemplazar argumentos si son constantes
-                    if (constantes.containsKey(arg1)) {
-                        cuadrupla[1] = constantes.get(arg1);
-                    }
-                    if (constantes.containsKey(arg2)) {
-                        cuadrupla[2] = constantes.get(arg2);
-                    }
-
-                    // Si ambos son números, realizar la operación
-                    if (esNumero(cuadrupla[1]) && esNumero(cuadrupla[2])) {
-                        int resultadoOpt = evaluar(operador, Integer.parseInt(cuadrupla[1]), Integer.parseInt(cuadrupla[2]));
-                        cuadrupla[0] = "=";
-                        cuadrupla[1] = String.valueOf(resultadoOpt);
-                        cuadrupla[2] = "";  // Arg2 ya no se necesita
-                    }
-                    break;
-            }
-
-            // Añadir la cuádrupla optimizada a la nueva lista
-            cuadruplasOptimizadas.add(cuadrupla);
+        // Reemplazar argumentos si son constantes
+        if (constantes.containsKey(arg1)) {
+            cuadrupla[1] = constantes.get(arg1);
+        }
+        if (constantes.containsKey(arg2)) {
+            cuadrupla[2] = constantes.get(arg2);
         }
 
-        return cuadruplasOptimizadas;
+        switch (operador) {
+            case "=":
+                if (esNumero(arg1)) {
+                    constantes.put(resultado, arg1);  // Guardar la constante
+                }
+                break;
+
+            case "+":
+            case "*":
+            case "-":
+            case "/":
+                if (esNumero(cuadrupla[1]) && esNumero(cuadrupla[2])) {
+                    // Realizar la operación si ambos argumentos son constantes
+                    int resultadoOpt = evaluar(operador, Integer.parseInt(cuadrupla[1]), Integer.parseInt(cuadrupla[2]));
+                    cuadrupla[0] = "=";
+                    cuadrupla[1] = String.valueOf(resultadoOpt);
+                    cuadrupla[2] = "";  // Arg2 ya no se necesita
+                    constantes.put(resultado, String.valueOf(resultadoOpt));  // Guardar el resultado como constante
+                }
+                break;
+        }
+
+        // Añadir la cuádrupla optimizada a la lista
+        cuadruplasOptimizadas.add(cuadrupla);
     }
+
+    return cuadruplasOptimizadas;
+}
+
 //////////////////////////////////////FUNCIONES PARA OPTIMIZAR
 // Función auxiliar para verificar si un valor es numérico
     static boolean esNumero(String str) {
@@ -410,6 +409,7 @@ Token tokenValor = getToken(0);
         } else if (tipo.kind == ARR && !esArreglo(tokenValor)) {
             agregarErrorSemantico("Error de tipo en la l\u00ednea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un arreglo para la variable '" + id.image + "'.");
         }
+        codeDirection("=", valor, "", id.image);
     } else {
       ;
     }
@@ -1048,18 +1048,6 @@ codeDirection("fin_funcion", id.image, "", "");
     finally { jj_save(44, xla); }
   }
 
-  private boolean jj_3_9()
- {
-    if (jj_3R_13()) return true;
-    return false;
-  }
-
-  private boolean jj_3_21()
- {
-    if (jj_scan_token(SUMA)) return true;
-    return false;
-  }
-
   private boolean jj_3_20()
  {
     Token xsp;
@@ -1087,6 +1075,12 @@ codeDirection("fin_funcion", id.image, "", "");
     }
     }
     if (jj_3R_18()) return true;
+    return false;
+  }
+
+  private boolean jj_3_9()
+ {
+    if (jj_3R_13()) return true;
     return false;
   }
 
@@ -1177,19 +1171,6 @@ codeDirection("fin_funcion", id.image, "", "");
     return false;
   }
 
-  private boolean jj_3_7()
- {
-    if (jj_3R_11()) return true;
-    return false;
-  }
-
-  private boolean jj_3_19()
- {
-    if (jj_scan_token(ASIGNACION)) return true;
-    if (jj_3R_17()) return true;
-    return false;
-  }
-
   private boolean jj_3_44()
  {
     if (jj_3R_6()) return true;
@@ -1204,6 +1185,12 @@ codeDirection("fin_funcion", id.image, "", "");
     jj_scanpos = xsp;
     if (jj_3_45()) return true;
     }
+    return false;
+  }
+
+  private boolean jj_3_7()
+ {
+    if (jj_3R_11()) return true;
     return false;
   }
 
@@ -1225,9 +1212,10 @@ codeDirection("fin_funcion", id.image, "", "");
     return false;
   }
 
-  private boolean jj_3_4()
+  private boolean jj_3_19()
  {
-    if (jj_3R_8()) return true;
+    if (jj_scan_token(ASIGNACION)) return true;
+    if (jj_3R_17()) return true;
     return false;
   }
 
@@ -1239,6 +1227,12 @@ codeDirection("fin_funcion", id.image, "", "");
       xsp = jj_scanpos;
       if (jj_3_42()) { jj_scanpos = xsp; break; }
     }
+    return false;
+  }
+
+  private boolean jj_3_4()
+ {
+    if (jj_3R_8()) return true;
     return false;
   }
 
@@ -1262,6 +1256,14 @@ codeDirection("fin_funcion", id.image, "", "");
     return false;
   }
 
+  private boolean jj_3R_10()
+ {
+    if (jj_scan_token(MIENTRAS)) return true;
+    if (jj_scan_token(PARENTESIS_ABRE)) return true;
+    if (jj_3R_17()) return true;
+    return false;
+  }
+
   private boolean jj_3R_6()
  {
     if (jj_3R_22()) return true;
@@ -1281,35 +1283,9 @@ codeDirection("fin_funcion", id.image, "", "");
     return false;
   }
 
-  private boolean jj_3R_10()
- {
-    if (jj_scan_token(MIENTRAS)) return true;
-    if (jj_scan_token(PARENTESIS_ABRE)) return true;
-    if (jj_3R_17()) return true;
-    return false;
-  }
-
-  private boolean jj_3_17()
- {
-    if (jj_scan_token(ARR)) return true;
-    return false;
-  }
-
-  private boolean jj_3_3()
- {
-    if (jj_3R_7()) return true;
-    return false;
-  }
-
   private boolean jj_3_31()
  {
     if (jj_scan_token(DIVISION)) return true;
-    return false;
-  }
-
-  private boolean jj_3_16()
- {
-    if (jj_scan_token(CARACTER)) return true;
     return false;
   }
 
@@ -1326,15 +1302,15 @@ codeDirection("fin_funcion", id.image, "", "");
     return false;
   }
 
-  private boolean jj_3_15()
+  private boolean jj_3_17()
  {
-    if (jj_scan_token(BOOLEANO)) return true;
+    if (jj_scan_token(ARR)) return true;
     return false;
   }
 
-  private boolean jj_3_14()
+  private boolean jj_3_3()
  {
-    if (jj_scan_token(REAL)) return true;
+    if (jj_3R_7()) return true;
     return false;
   }
 
@@ -1346,9 +1322,27 @@ codeDirection("fin_funcion", id.image, "", "");
     return false;
   }
 
+  private boolean jj_3_16()
+ {
+    if (jj_scan_token(CARACTER)) return true;
+    return false;
+  }
+
+  private boolean jj_3_15()
+ {
+    if (jj_scan_token(BOOLEANO)) return true;
+    return false;
+  }
+
   private boolean jj_3_23()
  {
     if (jj_scan_token(IGUAL)) return true;
+    return false;
+  }
+
+  private boolean jj_3_14()
+ {
+    if (jj_scan_token(REAL)) return true;
     return false;
   }
 
@@ -1419,6 +1413,21 @@ codeDirection("fin_funcion", id.image, "", "");
     return false;
   }
 
+  private boolean jj_3R_9()
+ {
+    if (jj_scan_token(SI)) return true;
+    if (jj_scan_token(PARENTESIS_ABRE)) return true;
+    if (jj_3R_17()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_15()
+ {
+    if (jj_scan_token(ROMPER)) return true;
+    if (jj_scan_token(PUNTO_Y_COMA)) return true;
+    return false;
+  }
+
   private boolean jj_3_10()
  {
     if (jj_3R_14()) return true;
@@ -1442,21 +1451,6 @@ codeDirection("fin_funcion", id.image, "", "");
   private boolean jj_3_2()
  {
     if (jj_3R_6()) return true;
-    return false;
-  }
-
-  private boolean jj_3R_9()
- {
-    if (jj_scan_token(SI)) return true;
-    if (jj_scan_token(PARENTESIS_ABRE)) return true;
-    if (jj_3R_17()) return true;
-    return false;
-  }
-
-  private boolean jj_3R_15()
- {
-    if (jj_scan_token(ROMPER)) return true;
-    if (jj_scan_token(PUNTO_Y_COMA)) return true;
     return false;
   }
 
@@ -1578,6 +1572,12 @@ codeDirection("fin_funcion", id.image, "", "");
   private boolean jj_3_32()
  {
     if (jj_scan_token(NUMERO)) return true;
+    return false;
+  }
+
+  private boolean jj_3_21()
+ {
+    if (jj_scan_token(SUMA)) return true;
     return false;
   }
 
