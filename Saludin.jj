@@ -30,7 +30,6 @@ public class Saludin {
 
     // Lista para almacenar los cuádruplos
     static List<String[]> cuadruplos = new ArrayList<String[]>();
-   //static List<String[]> cuadruplosOptimizado = new ArrayList<String[]>();
 
     // Método para generar etiquetas únicas
     static String genEtiqueta() {
@@ -57,20 +56,15 @@ public class Saludin {
     public void codeDirection(String op, String arg1, String arg2, String result) {
         cuadruplos.add(new String[]{op, arg1, arg2, result});
     }
-    //ImprimeCuadruplas Sin Optimzar
+
     static void ImpIntermedio() {
     BufferedWriter writer = null;
     try {
         writer = new BufferedWriter(new FileWriter("cuadruplos.txt"));
         for (String[] cuadruplo : cuadruplos) {
-            writer.write(String.join(" , ", cuadruplo));
+            writer.write("(" + String.join(", ", cuadruplo) + ")");
             writer.newLine();
         }
-      /*  cuadruplosOptimizado = optimizarCuadruplas(cuadruplos);//CreaNuevaLista Optimizada
-        for (String[] cuadrupla : cuadruplosOptimizado) {
-            System.out.println(cuadrupla[3] + " = " + cuadrupla[1] + " " + cuadrupla[0] + " " + cuadrupla[2]);
-        }
-        ImpIntermedioOpt();*/
     } catch (IOException e) {
         System.err.println("Error writing to file: " + e.getMessage());
     } finally {
@@ -205,6 +199,19 @@ public class Saludin {
         return token.kind == CARACTERES && token.image.length() == 3;
     }
 
+
+
+    // Método para verificar si un token es de tipo arreglo
+    private boolean esArreglo(Token token) {
+        return token.kind == ARR && token.image.matches("\\w+\\[\\d+\\]");
+    }
+
+    void verificarTiposExpresion(Token operador, Token operando1, Token operando2) {
+        if (!esNumero(operando1) || !esNumero(operando2)) {
+            agregarErrorSemantico("Operación aritmética con operandos no numéricos en la línea " + operador.beginLine + ", columna " + operador.beginColumn);
+        }
+    }
+
     /* En caso de que quiera cadena de caracteres
     private boolean esCaracter(Token token) {
         return token.kind == CARACTERES;  // Aceptar cualquier token de tipo CARACTERES
@@ -254,6 +261,8 @@ TOKEN : /* Operadores */ {
         | < FALSE: "falso" >
         | < ARR: "arr" >
         | < MATRIZ: "matriz" >
+        | < DEF: "def" >
+        | < DOS_PUNTOS: ":" >
     }
 
     TOKEN : {
@@ -271,8 +280,10 @@ TOKEN : /* Operadores */ {
         | < PUNTO_Y_COMA: ";" >
         | < PARENTESIS_ABRE: "(" >
         | < PARENTESIS_CIERRA: ")" >
+        | < COMA: "," >
         | < ERROR_TOKEN: ~[] > // Captura cualquier otro carácter no definido
     }
+
 
 void Inicio() :
 { }
@@ -283,7 +294,7 @@ void Inicio() :
 void Sentencia() :
 { }
 {
-    SentenciaIf() | SentenciaWhile() | SentenciaFor() | SentenciaEscribir() | SentenciaLeer() | SentenciaAsignacion() | SentenciaBreak() | DeclaracionArrays()
+    SentenciaIf() | SentenciaWhile() | SentenciaFor() | SentenciaEscribir() | SentenciaLeer() | SentenciaAsignacion() | SentenciaBreak() | declaracionFunciones()
 }
 
 Token TipoDato() :
@@ -293,14 +304,31 @@ Token TipoDato() :
     | tipo = <REAL> { return tipo; }
     | tipo = <BOOLEANO> { return tipo; }
     | tipo = <CARACTER> { return tipo; }
+    | tipo = <ARR> { return tipo; }
 }
 
 void Declaracion() :
-{Token id; Token tipo; String valor = null;}
+{ Token id; Token tipo; String valor = null; Token size = null; }
 {
-    tipo = TipoDato() id = <IDENTIFICADOR> (<ASIGNACION> valor = Expresion() {
+    tipo = TipoDato() id = <IDENTIFICADOR>
+    (
+        <CORCHETE_ABRE> size = <NUMERO> <CORCHETE_CIERRA>
+        {
+            if (tipo.kind != ARR) {
+                agregarErrorSemantico("Solo los arreglos pueden tener '[]' como parámetro. Tipo encontrado: " + tipo.image + " en la línea " + tipo.beginLine + ", columna " + tipo.beginColumn);
+            } else if (!esEntero(size)) {
+                agregarErrorSemantico("Tamaño del arreglo '" + id.image + "' debe ser un entero en la línea " + size.beginLine + ", columna " + size.beginColumn);
+            } else if (tablaSimbolos.containsKey(id.image)) {
+                agregarErrorSemantico("Arreglo '" + id.image + "' ya declarado en la línea " + id.beginLine + ", columna " + id.beginColumn);
+            } else {
+                tablaSimbolos.put(id.image, 1);
+                codeDirection("declarar_arr", id.image, size.image, "");
+            }
+        }
+    )?
+    (<ASIGNACION> valor = Expresion() {
         Token tokenValor = getToken(0);
-        codeDirection("=", valor, "", id.image);
+
         if (tipo.kind == ENTERO && !esEntero(tokenValor)) {
             agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un valor entero para la variable '" + id.image + "'.");
         } else if (tipo.kind == REAL && !esReal(tokenValor)) {
@@ -309,11 +337,15 @@ void Declaracion() :
             agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un valor booleano para la variable '" + id.image + "'.");
         } else if (tipo.kind == CARACTERES && !esCaracter(tokenValor)) {
             agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un carácter para la variable '" + id.image + "'.");
+        } else if (tipo.kind == ARR && !esArreglo(tokenValor)) {
+            agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un arreglo para la variable '" + id.image + "'.");
         }
-    })? <PUNTO_Y_COMA> {
+    })?
+    <PUNTO_Y_COMA> {
         agregarVariable(id.image, tipo.image);
     }
 }
+
 String Expresion() :
 { String t1, t2; Token op; }
 {
@@ -417,16 +449,19 @@ String Asignacion() :
 }
 
 void SentenciaEscribir() :
-{ }
+{ String exp; }
 {
-    <ESCRIBIR> <PARENTESIS_ABRE> Expresion() <PARENTESIS_CIERRA> <PUNTO_Y_COMA>
+    <ESCRIBIR> <PARENTESIS_ABRE> exp = Expresion() <PARENTESIS_CIERRA> <PUNTO_Y_COMA> {
+        codeDirection("escribir", exp, "", "");
+    }
 }
 
 void SentenciaLeer() :
-{Token id;}
+{ Token id; }
 {
     <LEER> <PARENTESIS_ABRE> id = <IDENTIFICADOR> <PARENTESIS_CIERRA> <PUNTO_Y_COMA> {
         verificarVariableDeclarada(id.image);
+        codeDirection("leer", id.image, "", "");
     }
 }
 
@@ -454,18 +489,30 @@ void ErrorLexico() :
     }
 }
 
-void BloqueSentencias() :
-{ }
+void declaracionFunciones() :
+{ Token id; }
 {
-    ( Declaracion() | Sentencia() )*
+    <DEF> id = <IDENTIFICADOR> <PARENTESIS_ABRE> [ Parametros() ] <PARENTESIS_CIERRA> <DOS_PUNTOS> {
+        if (tablaSimbolos.containsKey(id.image)) {
+            agregarErrorSemantico("Función '" + id.image + "' ya declarada.");
+        } else {
+            tablaSimbolos.put(id.image, 1);
+            codeDirection("funcion", id.image, "", "");
+        }
+    }
+    BloqueSentencias() {
+        codeDirection("fin_funcion", id.image, "", "");
+    }
 }
 
-
-void DeclaracionArrays():
+void Parametros() :
 {}
 {
-    try{<CORCHETE_ABRE> }catch(ParseException ex){System.out.println("Error sintáctico, no se encontró corchete izquierdo [ en la línea "+token.beginLine+", columna "+token.beginColumn+" después de "+token.image);}
-    try{<NUMERO>}catch(ParseException ex){System.out.println("Error sintáctico, no se encontró un número en la línea "+token.beginLine+", columna "+token.beginColumn+" después de "+token.image);}
-    try{<CORCHETE_CIERRA> }catch(ParseException ex){System.out.println("Error sintáctico, no se encontró corchete derecho ] en la línea "+token.beginLine+", columna "+token.beginColumn+" después de "+token.image);}
-    (DeclaracionArrays() )*
+    <IDENTIFICADOR> ( <COMA> <IDENTIFICADOR> )*
+}
+
+void BloqueSentencias() :
+{}
+{
+    ( Declaracion() | Sentencia() )*
 }

@@ -1,0 +1,4 @@
+ent a = 0;
+
+def hola_mundo_func(print):
+    escribir(a);

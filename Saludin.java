@@ -26,7 +26,6 @@ public class Saludin implements SaludinConstants {
 
     // Lista para almacenar los cuádruplos
     static List<String[]> cuadruplos = new ArrayList<String[]>();
-    static List<String[]> cuadruplosOptimizado = new ArrayList<String[]>();
 
     // Método para generar etiquetas únicas
     static String genEtiqueta() {
@@ -53,39 +52,13 @@ public class Saludin implements SaludinConstants {
     public void codeDirection(String op, String arg1, String arg2, String result) {
         cuadruplos.add(new String[]{op, arg1, arg2, result});
     }
-    //ImprimeCuadruplas Sin Optimzar
+
     static void ImpIntermedio() {
     BufferedWriter writer = null;
     try {
         writer = new BufferedWriter(new FileWriter("cuadruplos.txt"));
         for (String[] cuadruplo : cuadruplos) {
-            writer.write(String.join(" , ", cuadruplo));
-            writer.newLine();
-        }
-        cuadruplosOptimizado = optimizarCuadruplas(cuadruplos);//CreaNuevaLista Optimizada
-        for (String[] cuadrupla : cuadruplosOptimizado) {
-            System.out.println(cuadrupla[3] + " = " + cuadrupla[1] + " " + cuadrupla[0] + " " + cuadrupla[2]);
-        }
-        ImpIntermedioOpt();
-    } catch (IOException e) {
-        System.err.println("Error writing to file: " + e.getMessage());
-    } finally {
-        if (writer != null) {
-            try {
-                writer.close();
-            } catch (IOException e) {
-                System.err.println("Error closing the writer: " + e.getMessage());
-            }
-        }
-    }
-}
-
-    static void ImpIntermedioOpt() {
-    BufferedWriter writer = null;
-    try {
-        writer = new BufferedWriter(new FileWriter("cuadruplosOPtimizado.txt"));
-        for (String[] cuadruplo : cuadruplosOptimizado) {
-            writer.write(String.join(" , ", cuadruplo));
+            writer.write("(" + String.join(", ", cuadruplo) + ")");
             writer.newLine();
         }
     } catch (IOException e) {
@@ -101,77 +74,6 @@ public class Saludin implements SaludinConstants {
     }
 }
 
-//IMPRIMECuadruplas Optimizadas por propagacion_de_Constantes
-public static List<String[]> optimizarCuadruplas(List<String[]> cuadruplasOriginal) {
-        List<String[]> cuadruplasOptimizadas = new ArrayList<String[]>();
-        Map<String, String> constantes = new HashMap<String, String>();
-
-        for (String[] cuadrupla : cuadruplasOriginal) {
-            String operador = cuadrupla[0];
-            String arg1 = cuadrupla[1];
-            String arg2 = cuadrupla[2];
-            String resultado = cuadrupla[3];
-
-            switch (operador) {
-                case "=":
-                    // Si arg1 es una constante, la guardamos en el mapa
-                    if (esNumero(arg1)) {
-                        constantes.put(resultado, arg1);  // Guardar la constante
-                    } else if (constantes.containsKey(arg1)) {
-                        cuadrupla[1] = constantes.get(arg1);  // Reemplazar si es constante
-                    }
-                    break;
-
-                case "+":
-                case "*":
-                case "-":
-                case "/":
-                    // Reemplazar argumentos si son constantes
-                    if (constantes.containsKey(arg1)) {
-                        cuadrupla[1] = constantes.get(arg1);
-                    }
-                    if (constantes.containsKey(arg2)) {
-                        cuadrupla[2] = constantes.get(arg2);
-                    }
-
-                    // Si ambos son números, realizar la operación
-                    if (esNumero(cuadrupla[1]) && esNumero(cuadrupla[2])) {
-                        int resultadoOpt = evaluar(operador, Integer.parseInt(cuadrupla[1]), Integer.parseInt(cuadrupla[2]));
-                        cuadrupla[0] = "=";
-                        cuadrupla[1] = String.valueOf(resultadoOpt);
-                        cuadrupla[2] = "";  // Arg2 ya no se necesita
-                    }
-                    break;
-            }
-
-            // Añadir la cuádrupla optimizada a la nueva lista
-            cuadruplasOptimizadas.add(cuadrupla);
-        }
-
-        return cuadruplasOptimizadas;
-    }
-//////////////////////////////////////FUNCIONES PARA OPTIMIZAR
-// Función auxiliar para verificar si un valor es numérico
-    static boolean esNumero(String str) {
-        try {
-            Integer.parseInt(str);
-            return true;
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
-
-    // Función para evaluar las operaciones aritméticas
-   static int evaluar(String operador, int arg1, int arg2) {
-        switch (operador) {
-            case "+": return arg1 + arg2;
-            case "-": return arg1 - arg2;
-            case "*": return arg1 * arg2;
-            case "/": return arg1 / arg2;
-            default: throw new IllegalArgumentException("Operador no v\u00e1lido: " + operador);
-        }
-    }
-///////////////////////////////////////////////////
     public void iniciarAnalisis() throws ParseException {
         while (true) {
             try {
@@ -293,6 +195,19 @@ public static List<String[]> optimizarCuadruplas(List<String[]> cuadruplasOrigin
         return token.kind == CARACTERES && token.image.length() == 3;
     }
 
+
+
+    // Método para verificar si un token es de tipo arreglo
+    private boolean esArreglo(Token token) {
+        return token.kind == ARR && token.image.matches("\u005c\u005cw+\u005c\u005c[\u005c\u005cd+\u005c\u005c]");
+    }
+
+    void verificarTiposExpresion(Token operador, Token operando1, Token operando2) {
+        if (!esNumero(operando1) || !esNumero(operando2)) {
+            agregarErrorSemantico("Operaci\u00f3n aritm\u00e9tica con operandos no num\u00e9ricos en la l\u00ednea " + operador.beginLine + ", columna " + operador.beginColumn);
+        }
+    }
+
   final public void Inicio() throws ParseException {
     label_1:
     while (true) {
@@ -331,7 +246,7 @@ public static List<String[]> optimizarCuadruplas(List<String[]> cuadruplasOrigin
     } else if (jj_2_11(3)) {
       SentenciaBreak();
     } else if (jj_2_12(3)) {
-      DeclaracionArrays();
+      declaracionFunciones();
     } else {
       jj_consume_token(-1);
       throw new ParseException();
@@ -351,6 +266,9 @@ public static List<String[]> optimizarCuadruplas(List<String[]> cuadruplasOrigin
     } else if (jj_2_16(3)) {
       tipo = jj_consume_token(CARACTER);
 {if ("" != null) return tipo;}
+    } else if (jj_2_17(3)) {
+      tipo = jj_consume_token(ARR);
+{if ("" != null) return tipo;}
     } else {
       jj_consume_token(-1);
       throw new ParseException();
@@ -358,14 +276,31 @@ public static List<String[]> optimizarCuadruplas(List<String[]> cuadruplasOrigin
     throw new Error("Missing return statement in function");
   }
 
-  final public void Declaracion() throws ParseException {Token id; Token tipo; String valor = null;
+  final public void Declaracion() throws ParseException {Token id; Token tipo; String valor = null; Token size = null;
     tipo = TipoDato();
     id = jj_consume_token(IDENTIFICADOR);
-    if (jj_2_17(3)) {
+    if (jj_2_18(3)) {
+      jj_consume_token(CORCHETE_ABRE);
+      size = jj_consume_token(NUMERO);
+      jj_consume_token(CORCHETE_CIERRA);
+if (tipo.kind != ARR) {
+                agregarErrorSemantico("Solo los arreglos pueden tener '[]' como par\u00e1metro. Tipo encontrado: " + tipo.image + " en la l\u00ednea " + tipo.beginLine + ", columna " + tipo.beginColumn);
+            } else if (!esEntero(size)) {
+                agregarErrorSemantico("Tama\u00f1o del arreglo '" + id.image + "' debe ser un entero en la l\u00ednea " + size.beginLine + ", columna " + size.beginColumn);
+            } else if (tablaSimbolos.containsKey(id.image)) {
+                agregarErrorSemantico("Arreglo '" + id.image + "' ya declarado en la l\u00ednea " + id.beginLine + ", columna " + id.beginColumn);
+            } else {
+                tablaSimbolos.put(id.image, 1);
+                codeDirection("declarar_arr", id.image, size.image, "");
+            }
+    } else {
+      ;
+    }
+    if (jj_2_19(3)) {
       jj_consume_token(ASIGNACION);
       valor = Expresion();
 Token tokenValor = getToken(0);
-        codeDirection("=", valor, "", id.image);
+
         if (tipo.kind == ENTERO && !esEntero(tokenValor)) {
             agregarErrorSemantico("Error de tipo en la l\u00ednea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un valor entero para la variable '" + id.image + "'.");
         } else if (tipo.kind == REAL && !esReal(tokenValor)) {
@@ -374,6 +309,8 @@ Token tokenValor = getToken(0);
             agregarErrorSemantico("Error de tipo en la l\u00ednea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un valor booleano para la variable '" + id.image + "'.");
         } else if (tipo.kind == CARACTERES && !esCaracter(tokenValor)) {
             agregarErrorSemantico("Error de tipo en la l\u00ednea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un car\u00e1cter para la variable '" + id.image + "'.");
+        } else if (tipo.kind == ARR && !esArreglo(tokenValor)) {
+            agregarErrorSemantico("Error de tipo en la l\u00ednea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un arreglo para la variable '" + id.image + "'.");
         }
     } else {
       ;
@@ -386,26 +323,26 @@ agregarVariable(id.image, tipo.image);
     t1 = Termino();
     label_2:
     while (true) {
-      if (jj_2_18(3)) {
+      if (jj_2_20(3)) {
         ;
       } else {
         break label_2;
       }
-      if (jj_2_19(3)) {
+      if (jj_2_21(3)) {
         op = jj_consume_token(SUMA);
-      } else if (jj_2_20(3)) {
-        op = jj_consume_token(RESTA);
-      } else if (jj_2_21(3)) {
-        op = jj_consume_token(IGUAL);
       } else if (jj_2_22(3)) {
-        op = jj_consume_token(DIFERENTE);
+        op = jj_consume_token(RESTA);
       } else if (jj_2_23(3)) {
-        op = jj_consume_token(MAYOR_QUE);
+        op = jj_consume_token(IGUAL);
       } else if (jj_2_24(3)) {
-        op = jj_consume_token(MENOR_QUE);
+        op = jj_consume_token(DIFERENTE);
       } else if (jj_2_25(3)) {
-        op = jj_consume_token(MAYOR_O_IGUAL_QUE);
+        op = jj_consume_token(MAYOR_QUE);
       } else if (jj_2_26(3)) {
+        op = jj_consume_token(MENOR_QUE);
+      } else if (jj_2_27(3)) {
+        op = jj_consume_token(MAYOR_O_IGUAL_QUE);
+      } else if (jj_2_28(3)) {
         op = jj_consume_token(MENOR_O_IGUAL_QUE);
       } else {
         jj_consume_token(-1);
@@ -424,14 +361,14 @@ String temp = genTemporal();
     t1 = Factor();
     label_3:
     while (true) {
-      if (jj_2_27(3)) {
+      if (jj_2_29(3)) {
         ;
       } else {
         break label_3;
       }
-      if (jj_2_28(3)) {
+      if (jj_2_30(3)) {
         op = jj_consume_token(MULTIPLICACION);
-      } else if (jj_2_29(3)) {
+      } else if (jj_2_31(3)) {
         op = jj_consume_token(DIVISION);
       } else {
         jj_consume_token(-1);
@@ -447,33 +384,33 @@ String temp = genTemporal();
   }
 
   final public String Factor() throws ParseException {String t;
-    if (jj_2_30(3)) {
+    if (jj_2_32(3)) {
       jj_consume_token(NUMERO);
 {if ("" != null) return token.image;}
-    } else if (jj_2_31(3)) {
+    } else if (jj_2_33(3)) {
       jj_consume_token(IDENTIFICADOR);
 verificarVariableDeclarada(token.image); {if ("" != null) return token.image;}
-    } else if (jj_2_32(3)) {
+    } else if (jj_2_34(3)) {
       jj_consume_token(CADENA);
 {if ("" != null) return token.image;}
-    } else if (jj_2_33(3)) {
+    } else if (jj_2_35(3)) {
       jj_consume_token(TRUE);
 {if ("" != null) return token.image;}
-    } else if (jj_2_34(3)) {
+    } else if (jj_2_36(3)) {
       jj_consume_token(FALSE);
 {if ("" != null) return token.image;}
-    } else if (jj_2_35(3)) {
+    } else if (jj_2_37(3)) {
       jj_consume_token(PARENTESIS_ABRE);
       t = Expresion();
       jj_consume_token(PARENTESIS_CIERRA);
 {if ("" != null) return t;}
-    } else if (jj_2_36(3)) {
+    } else if (jj_2_38(3)) {
       jj_consume_token(IDENTIFICADOR);
       jj_consume_token(CORCHETE_ABRE);
       t = Expresion();
       jj_consume_token(CORCHETE_CIERRA);
 verificarVariableDeclarada(token.image); {if ("" != null) return token.image + "[" + t + "]";}
-    } else if (jj_2_37(3)) {
+    } else if (jj_2_39(3)) {
       jj_consume_token(IDENTIFICADOR);
       jj_consume_token(CORCHETE_ABRE);
       t = Expresion();
@@ -504,7 +441,7 @@ etiquetaInicioIf = genEtiqueta();
     BloqueSentencias();
 cuadruplos.add(new String[]{"goto", "", "", etiquetaFinIf});
         cuadruplos.add(new String[]{"label", "", "", etiquetaElse});
-    if (jj_2_38(3)) {
+    if (jj_2_40(3)) {
       jj_consume_token(SINO);
       BloqueSentencias();
     } else {
@@ -560,12 +497,13 @@ verificarVariableDeclarada(id.image);
     throw new Error("Missing return statement in function");
   }
 
-  final public void SentenciaEscribir() throws ParseException {
+  final public void SentenciaEscribir() throws ParseException {String exp;
     jj_consume_token(ESCRIBIR);
     jj_consume_token(PARENTESIS_ABRE);
-    Expresion();
+    exp = Expresion();
     jj_consume_token(PARENTESIS_CIERRA);
     jj_consume_token(PUNTO_Y_COMA);
+codeDirection("escribir", exp, "", "");
   }
 
   final public void SentenciaLeer() throws ParseException {Token id;
@@ -575,6 +513,7 @@ verificarVariableDeclarada(id.image);
     jj_consume_token(PARENTESIS_CIERRA);
     jj_consume_token(PUNTO_Y_COMA);
 verificarVariableDeclarada(id.image);
+        codeDirection("leer", id.image, "", "");
   }
 
   final public void SentenciaAsignacion() throws ParseException {Token id;
@@ -597,49 +536,57 @@ verificarVariableDeclarada(id.image);
 agregarErrorLexico("Car\u00e1cter inesperado '" + t.image + "' en la l\u00ednea " + t.beginLine + ", columna " + t.beginColumn);
   }
 
-  final public void BloqueSentencias() throws ParseException {
+  final public void declaracionFunciones() throws ParseException {Token id;
+    jj_consume_token(DEF);
+    id = jj_consume_token(IDENTIFICADOR);
+    jj_consume_token(PARENTESIS_ABRE);
+    if (jj_2_41(3)) {
+      Parametros();
+    } else {
+      ;
+    }
+    jj_consume_token(PARENTESIS_CIERRA);
+    jj_consume_token(DOS_PUNTOS);
+if (tablaSimbolos.containsKey(id.image)) {
+            agregarErrorSemantico("Funci\u00f3n '" + id.image + "' ya declarada.");
+        } else {
+            tablaSimbolos.put(id.image, 1);
+            codeDirection("funcion", id.image, "", "");
+        }
+    BloqueSentencias();
+codeDirection("fin_funcion", id.image, "", "");
+  }
+
+  final public void Parametros() throws ParseException {
+    jj_consume_token(IDENTIFICADOR);
     label_4:
     while (true) {
-      if (jj_2_39(3)) {
+      if (jj_2_42(3)) {
         ;
       } else {
         break label_4;
       }
-      if (jj_2_40(3)) {
+      jj_consume_token(COMA);
+      jj_consume_token(IDENTIFICADOR);
+    }
+  }
+
+  final public void BloqueSentencias() throws ParseException {
+    label_5:
+    while (true) {
+      if (jj_2_43(3)) {
+        ;
+      } else {
+        break label_5;
+      }
+      if (jj_2_44(3)) {
         Declaracion();
-      } else if (jj_2_41(3)) {
+      } else if (jj_2_45(3)) {
         Sentencia();
       } else {
         jj_consume_token(-1);
         throw new ParseException();
       }
-    }
-  }
-
-  final public void DeclaracionArrays() throws ParseException {
-    try {
-      jj_consume_token(CORCHETE_ABRE);
-    } catch (ParseException ex) {
-System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete izquierdo [ en la l\u00ednea "+token.beginLine+", columna "+token.beginColumn+" despu\u00e9s de "+token.image);
-    }
-    try {
-      jj_consume_token(NUMERO);
-    } catch (ParseException ex) {
-System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 un n\u00famero en la l\u00ednea "+token.beginLine+", columna "+token.beginColumn+" despu\u00e9s de "+token.image);
-    }
-    try {
-      jj_consume_token(CORCHETE_CIERRA);
-    } catch (ParseException ex) {
-System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho ] en la l\u00ednea "+token.beginLine+", columna "+token.beginColumn+" despu\u00e9s de "+token.image);
-    }
-    label_5:
-    while (true) {
-      if (jj_2_42(3)) {
-        ;
-      } else {
-        break label_5;
-      }
-      DeclaracionArrays();
     }
   }
 
@@ -979,213 +926,34 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
     finally { jj_save(41, xla); }
   }
 
-  private boolean jj_3_1()
+  private boolean jj_2_43(int xla)
  {
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_3_2()) {
-    jj_scanpos = xsp;
-    if (jj_3_3()) {
-    jj_scanpos = xsp;
-    if (jj_3_4()) return true;
-    }
-    }
-    return false;
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return !jj_3_43(); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(42, xla); }
   }
 
-  private boolean jj_3_2()
+  private boolean jj_2_44(int xla)
  {
-    if (jj_3R_6()) return true;
-    return false;
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return !jj_3_44(); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(43, xla); }
   }
 
-  private boolean jj_3_42()
+  private boolean jj_2_45(int xla)
  {
-    if (jj_3R_16()) return true;
-    return false;
-  }
-
-  private boolean jj_3R_10()
- {
-    if (jj_scan_token(MIENTRAS)) return true;
-    if (jj_scan_token(PARENTESIS_ABRE)) return true;
-    if (jj_3R_17()) return true;
-    return false;
-  }
-
-  private boolean jj_3R_16()
- {
-    if (jj_scan_token(CORCHETE_ABRE)) return true;
-    if (jj_scan_token(NUMERO)) return true;
-    if (jj_scan_token(CORCHETE_CIERRA)) return true;
-    return false;
-  }
-
-  private boolean jj_3_29()
- {
-    if (jj_scan_token(DIVISION)) return true;
-    return false;
-  }
-
-  private boolean jj_3_26()
- {
-    if (jj_scan_token(MENOR_O_IGUAL_QUE)) return true;
-    return false;
-  }
-
-  private boolean jj_3_38()
- {
-    if (jj_scan_token(SINO)) return true;
-    if (jj_3R_20()) return true;
-    return false;
-  }
-
-  private boolean jj_3_40()
- {
-    if (jj_3R_6()) return true;
-    return false;
-  }
-
-  private boolean jj_3_39()
- {
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_3_40()) {
-    jj_scanpos = xsp;
-    if (jj_3_41()) return true;
-    }
-    return false;
-  }
-
-  private boolean jj_3_21()
- {
-    if (jj_scan_token(IGUAL)) return true;
-    return false;
-  }
-
-  private boolean jj_3R_20()
- {
-    Token xsp;
-    while (true) {
-      xsp = jj_scanpos;
-      if (jj_3_39()) { jj_scanpos = xsp; break; }
-    }
-    return false;
-  }
-
-  private boolean jj_3_9()
- {
-    if (jj_3R_13()) return true;
-    return false;
-  }
-
-  private boolean jj_3R_8()
- {
-    if (jj_scan_token(ERROR_TOKEN)) return true;
-    return false;
-  }
-
-  private boolean jj_3R_9()
- {
-    if (jj_scan_token(SI)) return true;
-    if (jj_scan_token(PARENTESIS_ABRE)) return true;
-    if (jj_3R_17()) return true;
-    return false;
-  }
-
-  private boolean jj_3_20()
- {
-    if (jj_scan_token(RESTA)) return true;
-    return false;
-  }
-
-  private boolean jj_3R_15()
- {
-    if (jj_scan_token(ROMPER)) return true;
-    if (jj_scan_token(PUNTO_Y_COMA)) return true;
-    return false;
-  }
-
-  private boolean jj_3_37()
- {
-    if (jj_scan_token(IDENTIFICADOR)) return true;
-    if (jj_scan_token(CORCHETE_ABRE)) return true;
-    if (jj_3R_17()) return true;
-    return false;
-  }
-
-  private boolean jj_3_36()
- {
-    if (jj_scan_token(IDENTIFICADOR)) return true;
-    if (jj_scan_token(CORCHETE_ABRE)) return true;
-    if (jj_3R_17()) return true;
-    return false;
-  }
-
-  private boolean jj_3_28()
- {
-    if (jj_scan_token(MULTIPLICACION)) return true;
-    return false;
-  }
-
-  private boolean jj_3_27()
- {
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_3_28()) {
-    jj_scanpos = xsp;
-    if (jj_3_29()) return true;
-    }
-    if (jj_3R_19()) return true;
-    return false;
-  }
-
-  private boolean jj_3_35()
- {
-    if (jj_scan_token(PARENTESIS_ABRE)) return true;
-    if (jj_3R_17()) return true;
-    if (jj_scan_token(PARENTESIS_CIERRA)) return true;
-    return false;
-  }
-
-  private boolean jj_3_34()
- {
-    if (jj_scan_token(FALSE)) return true;
-    return false;
-  }
-
-  private boolean jj_3_33()
- {
-    if (jj_scan_token(TRUE)) return true;
-    return false;
-  }
-
-  private boolean jj_3_32()
- {
-    if (jj_scan_token(CADENA)) return true;
-    return false;
-  }
-
-  private boolean jj_3_25()
- {
-    if (jj_scan_token(MAYOR_O_IGUAL_QUE)) return true;
-    return false;
-  }
-
-  private boolean jj_3_31()
- {
-    if (jj_scan_token(IDENTIFICADOR)) return true;
-    return false;
+    jj_la = xla; jj_lastpos = jj_scanpos = token;
+    try { return !jj_3_45(); }
+    catch(LookaheadSuccess ls) { return true; }
+    finally { jj_save(44, xla); }
   }
 
   private boolean jj_3R_19()
  {
     Token xsp;
     xsp = jj_scanpos;
-    if (jj_3_30()) {
-    jj_scanpos = xsp;
-    if (jj_3_31()) {
-    jj_scanpos = xsp;
     if (jj_3_32()) {
     jj_scanpos = xsp;
     if (jj_3_33()) {
@@ -1196,7 +964,11 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
     jj_scanpos = xsp;
     if (jj_3_36()) {
     jj_scanpos = xsp;
-    if (jj_3_37()) return true;
+    if (jj_3_37()) {
+    jj_scanpos = xsp;
+    if (jj_3_38()) {
+    jj_scanpos = xsp;
+    if (jj_3_39()) return true;
     }
     }
     }
@@ -1207,47 +979,28 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
     return false;
   }
 
-  private boolean jj_3R_14()
- {
-    if (jj_scan_token(IDENTIFICADOR)) return true;
-    if (jj_scan_token(ASIGNACION)) return true;
-    if (jj_3R_17()) return true;
-    return false;
-  }
-
-  private boolean jj_3_30()
+  private boolean jj_3_32()
  {
     if (jj_scan_token(NUMERO)) return true;
     return false;
   }
 
-  private boolean jj_3_17()
+  private boolean jj_3_9()
  {
-    if (jj_scan_token(ASIGNACION)) return true;
-    if (jj_3R_17()) return true;
+    if (jj_3R_13()) return true;
     return false;
   }
 
-  private boolean jj_3_8()
- {
-    if (jj_3R_12()) return true;
-    return false;
-  }
-
-  private boolean jj_3_19()
+  private boolean jj_3_21()
  {
     if (jj_scan_token(SUMA)) return true;
     return false;
   }
 
-  private boolean jj_3_18()
+  private boolean jj_3_20()
  {
     Token xsp;
     xsp = jj_scanpos;
-    if (jj_3_19()) {
-    jj_scanpos = xsp;
-    if (jj_3_20()) {
-    jj_scanpos = xsp;
     if (jj_3_21()) {
     jj_scanpos = xsp;
     if (jj_3_22()) {
@@ -1258,7 +1011,11 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
     jj_scanpos = xsp;
     if (jj_3_25()) {
     jj_scanpos = xsp;
-    if (jj_3_26()) return true;
+    if (jj_3_26()) {
+    jj_scanpos = xsp;
+    if (jj_3_27()) {
+    jj_scanpos = xsp;
+    if (jj_3_28()) return true;
     }
     }
     }
@@ -1284,7 +1041,7 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
     Token xsp;
     while (true) {
       xsp = jj_scanpos;
-      if (jj_3_27()) { jj_scanpos = xsp; break; }
+      if (jj_3_29()) { jj_scanpos = xsp; break; }
     }
     return false;
   }
@@ -1297,21 +1054,9 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
     return false;
   }
 
-  private boolean jj_3_12()
- {
-    if (jj_3R_16()) return true;
-    return false;
-  }
-
-  private boolean jj_3_24()
+  private boolean jj_3_26()
  {
     if (jj_scan_token(MENOR_QUE)) return true;
-    return false;
-  }
-
-  private boolean jj_3_7()
- {
-    if (jj_3R_11()) return true;
     return false;
   }
 
@@ -1321,14 +1066,99 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
     Token xsp;
     while (true) {
       xsp = jj_scanpos;
-      if (jj_3_18()) { jj_scanpos = xsp; break; }
+      if (jj_3_20()) { jj_scanpos = xsp; break; }
     }
     return false;
   }
 
-  private boolean jj_3R_22()
+  private boolean jj_3_41()
+ {
+    if (jj_3R_21()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_23()
  {
     if (jj_scan_token(IDENTIFICADOR)) return true;
+    return false;
+  }
+
+  private boolean jj_3_8()
+ {
+    if (jj_3R_12()) return true;
+    return false;
+  }
+
+  private boolean jj_3_45()
+ {
+    if (jj_3R_7()) return true;
+    return false;
+  }
+
+  private boolean jj_3_42()
+ {
+    if (jj_scan_token(COMA)) return true;
+    if (jj_scan_token(IDENTIFICADOR)) return true;
+    return false;
+  }
+
+  private boolean jj_3_25()
+ {
+    if (jj_scan_token(MAYOR_QUE)) return true;
+    return false;
+  }
+
+  private boolean jj_3_12()
+ {
+    if (jj_3R_16()) return true;
+    return false;
+  }
+
+  private boolean jj_3_7()
+ {
+    if (jj_3R_11()) return true;
+    return false;
+  }
+
+  private boolean jj_3_19()
+ {
+    if (jj_scan_token(ASIGNACION)) return true;
+    if (jj_3R_17()) return true;
+    return false;
+  }
+
+  private boolean jj_3_44()
+ {
+    if (jj_3R_6()) return true;
+    return false;
+  }
+
+  private boolean jj_3_43()
+ {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3_44()) {
+    jj_scanpos = xsp;
+    if (jj_3_45()) return true;
+    }
+    return false;
+  }
+
+  private boolean jj_3R_11()
+ {
+    if (jj_scan_token(PARA)) return true;
+    if (jj_scan_token(PARENTESIS_ABRE)) return true;
+    if (jj_3R_23()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_20()
+ {
+    Token xsp;
+    while (true) {
+      xsp = jj_scanpos;
+      if (jj_3_43()) { jj_scanpos = xsp; break; }
+    }
     return false;
   }
 
@@ -1338,15 +1168,47 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
     return false;
   }
 
+  private boolean jj_3R_21()
+ {
+    if (jj_scan_token(IDENTIFICADOR)) return true;
+    Token xsp;
+    while (true) {
+      xsp = jj_scanpos;
+      if (jj_3_42()) { jj_scanpos = xsp; break; }
+    }
+    return false;
+  }
+
+  private boolean jj_3_18()
+ {
+    if (jj_scan_token(CORCHETE_ABRE)) return true;
+    if (jj_scan_token(NUMERO)) return true;
+    if (jj_scan_token(CORCHETE_CIERRA)) return true;
+    return false;
+  }
+
+  private boolean jj_3_24()
+ {
+    if (jj_scan_token(DIFERENTE)) return true;
+    return false;
+  }
+
   private boolean jj_3_11()
  {
     if (jj_3R_15()) return true;
     return false;
   }
 
-  private boolean jj_3_23()
+  private boolean jj_3R_6()
  {
-    if (jj_scan_token(MAYOR_QUE)) return true;
+    if (jj_3R_22()) return true;
+    if (jj_scan_token(IDENTIFICADOR)) return true;
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3_18()) jj_scanpos = xsp;
+    xsp = jj_scanpos;
+    if (jj_3_19()) jj_scanpos = xsp;
+    if (jj_scan_token(PUNTO_Y_COMA)) return true;
     return false;
   }
 
@@ -1356,14 +1218,17 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
     return false;
   }
 
-  private boolean jj_3R_6()
+  private boolean jj_3R_10()
  {
-    if (jj_3R_21()) return true;
-    if (jj_scan_token(IDENTIFICADOR)) return true;
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_3_17()) jj_scanpos = xsp;
-    if (jj_scan_token(PUNTO_Y_COMA)) return true;
+    if (jj_scan_token(MIENTRAS)) return true;
+    if (jj_scan_token(PARENTESIS_ABRE)) return true;
+    if (jj_3R_17()) return true;
+    return false;
+  }
+
+  private boolean jj_3_17()
+ {
+    if (jj_scan_token(ARR)) return true;
     return false;
   }
 
@@ -1373,17 +1238,28 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
     return false;
   }
 
+  private boolean jj_3_31()
+ {
+    if (jj_scan_token(DIVISION)) return true;
+    return false;
+  }
+
   private boolean jj_3_16()
  {
     if (jj_scan_token(CARACTER)) return true;
     return false;
   }
 
-  private boolean jj_3R_11()
+  private boolean jj_3_28()
  {
-    if (jj_scan_token(PARA)) return true;
-    if (jj_scan_token(PARENTESIS_ABRE)) return true;
-    if (jj_3R_22()) return true;
+    if (jj_scan_token(MENOR_O_IGUAL_QUE)) return true;
+    return false;
+  }
+
+  private boolean jj_3_40()
+ {
+    if (jj_scan_token(SINO)) return true;
+    if (jj_3R_20()) return true;
     return false;
   }
 
@@ -1399,7 +1275,21 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
     return false;
   }
 
-  private boolean jj_3R_21()
+  private boolean jj_3R_16()
+ {
+    if (jj_scan_token(DEF)) return true;
+    if (jj_scan_token(IDENTIFICADOR)) return true;
+    if (jj_scan_token(PARENTESIS_ABRE)) return true;
+    return false;
+  }
+
+  private boolean jj_3_23()
+ {
+    if (jj_scan_token(IGUAL)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_22()
  {
     Token xsp;
     xsp = jj_scanpos;
@@ -1409,7 +1299,10 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
     jj_scanpos = xsp;
     if (jj_3_15()) {
     jj_scanpos = xsp;
-    if (jj_3_16()) return true;
+    if (jj_3_16()) {
+    jj_scanpos = xsp;
+    if (jj_3_17()) return true;
+    }
     }
     }
     }
@@ -1422,15 +1315,9 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
     return false;
   }
 
-  private boolean jj_3_41()
+  private boolean jj_3R_8()
  {
-    if (jj_3R_7()) return true;
-    return false;
-  }
-
-  private boolean jj_3_22()
- {
-    if (jj_scan_token(DIFERENTE)) return true;
+    if (jj_scan_token(ERROR_TOKEN)) return true;
     return false;
   }
 
@@ -1475,6 +1362,127 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
     return false;
   }
 
+  private boolean jj_3_1()
+ {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3_2()) {
+    jj_scanpos = xsp;
+    if (jj_3_3()) {
+    jj_scanpos = xsp;
+    if (jj_3_4()) return true;
+    }
+    }
+    return false;
+  }
+
+  private boolean jj_3_2()
+ {
+    if (jj_3R_6()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_9()
+ {
+    if (jj_scan_token(SI)) return true;
+    if (jj_scan_token(PARENTESIS_ABRE)) return true;
+    if (jj_3R_17()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_15()
+ {
+    if (jj_scan_token(ROMPER)) return true;
+    if (jj_scan_token(PUNTO_Y_COMA)) return true;
+    return false;
+  }
+
+  private boolean jj_3_22()
+ {
+    if (jj_scan_token(RESTA)) return true;
+    return false;
+  }
+
+  private boolean jj_3_39()
+ {
+    if (jj_scan_token(IDENTIFICADOR)) return true;
+    if (jj_scan_token(CORCHETE_ABRE)) return true;
+    if (jj_3R_17()) return true;
+    return false;
+  }
+
+  private boolean jj_3_38()
+ {
+    if (jj_scan_token(IDENTIFICADOR)) return true;
+    if (jj_scan_token(CORCHETE_ABRE)) return true;
+    if (jj_3R_17()) return true;
+    return false;
+  }
+
+  private boolean jj_3_30()
+ {
+    if (jj_scan_token(MULTIPLICACION)) return true;
+    return false;
+  }
+
+  private boolean jj_3_37()
+ {
+    if (jj_scan_token(PARENTESIS_ABRE)) return true;
+    if (jj_3R_17()) return true;
+    if (jj_scan_token(PARENTESIS_CIERRA)) return true;
+    return false;
+  }
+
+  private boolean jj_3_29()
+ {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3_30()) {
+    jj_scanpos = xsp;
+    if (jj_3_31()) return true;
+    }
+    if (jj_3R_19()) return true;
+    return false;
+  }
+
+  private boolean jj_3_36()
+ {
+    if (jj_scan_token(FALSE)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_14()
+ {
+    if (jj_scan_token(IDENTIFICADOR)) return true;
+    if (jj_scan_token(ASIGNACION)) return true;
+    if (jj_3R_17()) return true;
+    return false;
+  }
+
+  private boolean jj_3_35()
+ {
+    if (jj_scan_token(TRUE)) return true;
+    return false;
+  }
+
+  private boolean jj_3_34()
+ {
+    if (jj_scan_token(CADENA)) return true;
+    return false;
+  }
+
+  private boolean jj_3_27()
+ {
+    if (jj_scan_token(MAYOR_O_IGUAL_QUE)) return true;
+    return false;
+  }
+
+  private boolean jj_3_33()
+ {
+    if (jj_scan_token(IDENTIFICADOR)) return true;
+    return false;
+  }
+
   /** Generated Token Manager. */
   public SaludinTokenManager token_source;
   SimpleCharStream jj_input_stream;
@@ -1499,7 +1507,7 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
    private static void jj_la1_init_1() {
       jj_la1_1 = new int[] {};
    }
-  final private JJCalls[] jj_2_rtns = new JJCalls[42];
+  final private JJCalls[] jj_2_rtns = new JJCalls[45];
   private boolean jj_rescan = false;
   private int jj_gc = 0;
 
@@ -1679,7 +1687,7 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
   /** Generate ParseException. */
   public ParseException generateParseException() {
     jj_expentries.clear();
-    boolean[] la1tokens = new boolean[49];
+    boolean[] la1tokens = new boolean[52];
     if (jj_kind >= 0) {
       la1tokens[jj_kind] = true;
       jj_kind = -1;
@@ -1696,7 +1704,7 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
         }
       }
     }
-    for (int i = 0; i < 49; i++) {
+    for (int i = 0; i < 52; i++) {
       if (la1tokens[i]) {
         jj_expentry = new int[1];
         jj_expentry[0] = i;
@@ -1723,7 +1731,7 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
 
   private void jj_rescan_token() {
     jj_rescan = true;
-    for (int i = 0; i < 42; i++) {
+    for (int i = 0; i < 45; i++) {
     try {
       JJCalls p = jj_2_rtns[i];
       do {
@@ -1772,6 +1780,9 @@ System.out.println("Error sint\u00e1ctico, no se encontr\u00f3 corchete derecho 
             case 39: jj_3_40(); break;
             case 40: jj_3_41(); break;
             case 41: jj_3_42(); break;
+            case 42: jj_3_43(); break;
+            case 43: jj_3_44(); break;
+            case 44: jj_3_45(); break;
           }
         }
         p = p.next;
