@@ -69,25 +69,33 @@ public interface SaludinConstants {
   /** RegularExpression Id. */
   int FALSE = 34;
   /** RegularExpression Id. */
-  int IDENTIFICADOR = 35;
+  int ARR = 35;
   /** RegularExpression Id. */
-  int LETRA = 36;
+  int MATRIZ = 36;
   /** RegularExpression Id. */
-  int DIGITO = 37;
+  int CORCHETE_ABRE = 37;
   /** RegularExpression Id. */
-  int NUMERO = 38;
+  int CORCHETE_CIERRA = 38;
   /** RegularExpression Id. */
-  int CADENA = 39;
+  int IDENTIFICADOR = 39;
   /** RegularExpression Id. */
-  int CARACTERES = 40;
+  int LETRA = 40;
   /** RegularExpression Id. */
-  int PUNTO_Y_COMA = 41;
+  int DIGITO = 41;
   /** RegularExpression Id. */
-  int PARENTESIS_ABRE = 42;
+  int NUMERO = 42;
   /** RegularExpression Id. */
-  int PARENTESIS_CIERRA = 43;
+  int CADENA = 43;
   /** RegularExpression Id. */
-  int ERROR_TOKEN = 44;
+  int CARACTERES = 44;
+  /** RegularExpression Id. */
+  int PUNTO_Y_COMA = 45;
+  /** RegularExpression Id. */
+  int PARENTESIS_ABRE = 46;
+  /** RegularExpression Id. */
+  int PARENTESIS_CIERRA = 47;
+  /** RegularExpression Id. */
+  int ERROR_TOKEN = 48;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -129,6 +137,10 @@ public interface SaludinConstants {
     "\"bool\"",
     "\"verdadero\"",
     "\"falso\"",
+    "\"arr\"",
+    "\"matriz\"",
+    "\"[\"",
+    "\"]\"",
     "<IDENTIFICADOR>",
     "<LETRA>",
     "<DIGITO>",
