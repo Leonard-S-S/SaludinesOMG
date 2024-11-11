@@ -1,7 +1,9 @@
-ent a = 5;
-ent b = 10;
-ent c = 5;
-ent d= 3;
-ent z=0;
+ent x=1;
+if(x==1) then
+escribir("x es 1"+x);
+else
+escribir("x no es unu");
 
-z=(a+b)+(c*d);
+ent x;
+escribir("Dame numero");
+
