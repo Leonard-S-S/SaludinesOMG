@@ -12,6 +12,7 @@ PARSER_BEGIN(Saludin)
     import java.io.BufferedWriter;
     import java.io.FileWriter;
     import java.io.IOException;
+    import java.io.*;
 
     public class Saludin {
         // Lista para almacenar los errores léxicos
@@ -50,7 +51,7 @@ PARSER_BEGIN(Saludin)
             parser.iniciarAnalisis();
             parser.reportarErrores();
             if (parser.erroresLexicos.isEmpty() && parser.erroresSintacticos.isEmpty() && parser.erroresSemanticos.isEmpty()) {
-                System.out.println("Análisis léxico, sintáctico y semántico exitoso.");
+                System.out.println("COMPILACIÓN EXITOSA ^^ .");
             } else {
                 System.out.println("Se encontraron errores léxicos, sintácticos o semánticos.");
             }
@@ -58,20 +59,49 @@ PARSER_BEGIN(Saludin)
 
          // Función para generar código C++ y escribirlo en un archivo .cpp
           public void writeCppToFile() {
-            BufferedWriter writer = null;
-            try {
-                writer = new BufferedWriter(new FileWriter("output.txt"));
-                writer.write(cppCode.toString());
-                System.out.println("c++ generado correctamente");
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                if (writer != null) {
-                    try {
-                        writer.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }}}}
+              BufferedWriter writer = null;
+              try {
+                  writer = new BufferedWriter(new FileWriter("output.cpp"));
+                  writer.write(cppCode.toString());
+                  System.out.println("C++ generado correctamente");
+              } catch (IOException e) {
+                  e.printStackTrace();
+              } finally {
+                  if (writer != null) {
+                      try {
+                          writer.close();
+                      } catch (IOException e) {
+                          e.printStackTrace();
+                      }
+                  }
+              }
+              EjecutarComando();
+          }
+
+          public void EjecutarComando(){
+                  try {
+                      ProcessBuilder builder = new ProcessBuilder("g++","output.cpp","-o", "mi_programa");
+                      Process proceso = builder.start();
+
+                      // Leer la salida de errores
+                     BufferedReader errorReader = new BufferedReader(new InputStreamReader(proceso.getErrorStream()));
+                      String linea;
+                     while ((linea = errorReader.readLine()) != null) {
+                          System.out.println("Error: " + linea);
+                      }
+                      // Leer la salida estándar
+                      BufferedReader reader = new BufferedReader(new InputStreamReader(proceso.getInputStream()));
+                      while ((linea = reader.readLine()) != null) {
+                          System.out.println(linea);
+                      }
+
+                      reader.close();
+                     errorReader.close();
+                      System.out.println("El ejecutable se generó en: mi_programa.exe");
+                  } catch(Exception e) {
+                      e.printStackTrace();
+                  }}
+
 
         public void codeDirection(String op, String arg1, String arg2, String result) {
             cuadruplos.add(new String[]{op, arg1, arg2, result});
@@ -314,6 +344,9 @@ PARSER_BEGIN(Saludin)
             return token.kind == CARACTERES && token.image.length() == 3;
         }
 
+        private boolean sonCaracteres(Token token) {
+            return token.kind == CADENA && token.image.length() == 3;
+                }
 
 
         // Método para verificar si un token es de tipo arreglo
@@ -334,14 +367,15 @@ PARSER_BEGIN(Saludin)
                    case REAL: return "float";
                    case BOOLEANO: return "bool";
                    case CARACTER: return "char";
-                   case ARR: return "int"; // o el tipo que usas para arreglos
+                   case ARR: return "int";
+                   case CAD: return "string"; // o el tipo que usas para arreglos
                    default: return "int";
                }
            }
 
         /* En caso de que quiera cadena de caracteres
         private boolean esCaracter(Token token) {
-            return token.kind == CARACTERES;  // Aceptar cualquier token de tipo CARACTERES
+            return token.kind == CADENA;  // Aceptar cualquier token de tipo CARACTERES
         }
         */
     }
@@ -383,6 +417,7 @@ TOKEN : /* Operadores */ {
           < ENTERO: "ent" >
         | < REAL: "real" >
         | < CARACTER: "car" >
+        | < CAD: "cad">
         | < BOOLEANO: "bool" >
         | < TRUE: "verdadero" >
         | < FALSE: "falso" >
@@ -407,6 +442,8 @@ TOKEN : /* Operadores */ {
         | < PUNTO_Y_COMA: ";" >
         | < PARENTESIS_ABRE: "(" >
         | < PARENTESIS_CIERRA: ")" >
+        | < ABRIR_LLAVE: "{" >
+        | <CERRAR_LLAVE: "}" >
         | < COMA: "," >
         | < ERROR_TOKEN: ~[] > // Captura cualquier otro carácter no definido
     }
@@ -419,6 +456,7 @@ void Inicio() :
     ( Declaracion() | Sentencia() | ErrorLexico() )* <EOF>
     {
         cppCode.append("    return 0;\n}\n");
+        //writeCppToFile();
         writeCppToFile();
     }
 }
@@ -426,7 +464,7 @@ void Inicio() :
 void Sentencia() :
 { }
 {
-    SentenciaIf() | SentenciaWhile() | SentenciaFor() | SentenciaEscribir() | SentenciaLeer() | SentenciaAsignacion() | SentenciaBreak() | declaracionFunciones()|Asignacion()
+    SentenciaIf() | SentenciaWhile() | SentenciaFor() | SentenciaEscribir() | SentenciaLeer() | SentenciaAsignacion() | SentenciaBreak() | declaracionFunciones()
 }
 
 Token TipoDato() :
@@ -437,6 +475,7 @@ Token TipoDato() :
     | tipo = <BOOLEANO> { return tipo; }
     | tipo = <CARACTER> { return tipo; }
     | tipo = <ARR> { return tipo; }
+    | tipo = <CAD> { return tipo; }
 }
 
 void Declaracion() :
@@ -471,9 +510,16 @@ void Declaracion() :
             agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un valor booleano para la variable '" + id.image + "'.");
         } else if (tipo.kind == CARACTERES && !esCaracter(tokenValor)) {
             agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un carácter para la variable '" + id.image + "'.");
-        } else if (tipo.kind == ARR && !esArreglo(tokenValor)) {
+        }
+        else if (tipo.kind == CAD && !sonCaracteres(tokenValor)) {
+                    agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba una cadena para la variable '" + id.image + "'.");
+                }
+        else if (tipo.kind == ARR && !esArreglo(tokenValor)) {
             agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un arreglo para la variable '" + id.image + "'.");
         }
+        else if (tipo.kind == CADENA && !esArreglo(tokenValor)) {
+            agregarErrorSemantico("Error de tipo en la línea " + tokenValor.beginLine + ", columna " + tokenValor.beginColumn + ": Se esperaba un arreglo para la variable '" + id.image + "'.");
+                }
         codeDirection("=", valor, "", id.image);
         //System.out.println(valor);
         cppCode.append("= "+valor+" ");
@@ -519,8 +565,8 @@ String Factor() :
     <NUMERO> { return token.image; }
   | <IDENTIFICADOR> { verificarVariableDeclarada(token.image); return token.image; }
   | <CADENA> { return token.image; }
-  | <TRUE> { return token.image; }
-  | <FALSE> { return token.image; }
+  | <TRUE> { return "true"; }
+  | <FALSE> { return "false"; }
   | <PARENTESIS_ABRE> t = Expresion() <PARENTESIS_CIERRA> { return "("+t+")"; }
   | <IDENTIFICADOR> <CORCHETE_ABRE> t = Expresion() <CORCHETE_CIERRA> { verificarVariableDeclarada(token.image); return token.image + "[" + t + "]"; }
   | <IDENTIFICADOR> <CORCHETE_ABRE> t = Expresion() <CORCHETE_CIERRA> <CORCHETE_ABRE> t = Expresion() <CORCHETE_CIERRA> { verificarVariableDeclarada(token.image); return token.image + "[" + t + "][" + t + "]"; }
@@ -529,7 +575,7 @@ String Factor() :
 void SentenciaIf() :
 { String etiquetaInicioIf, etiquetaElse, etiquetaFinIf; String condicion; }
 {
-    <SI> <PARENTESIS_ABRE> condicion = Expresion() <PARENTESIS_CIERRA> <ENTONCES> {
+    <SI> <PARENTESIS_ABRE> condicion = Expresion() <PARENTESIS_CIERRA> <ABRIR_LLAVE> {
         etiquetaInicioIf = genEtiqueta();
         etiquetaElse = genEtiqueta();
         etiquetaFinIf = genEtiqueta();
@@ -542,7 +588,8 @@ void SentenciaIf() :
         cuadruplos.add(new String[]{"goto", "", "", etiquetaFinIf});
         cuadruplos.add(new String[]{"label", "", "", etiquetaElse});
         cppCode.append("}\n");
-    } ( <SINO>{cppCode.append("else {\n");} BloqueSentencias(){cppCode.append("}\n");} )? {
+    }<CERRAR_LLAVE> ( <SINO><ABRIR_LLAVE> {cppCode.append("else {\n");}
+    BloqueSentencias(){cppCode.append("}\n");} <CERRAR_LLAVE> )? {
         cuadruplos.add(new String[]{"label", "", "", etiquetaFinIf});
     }
 }
@@ -550,7 +597,7 @@ void SentenciaIf() :
 void SentenciaWhile() :
 { String etiquetaInicioWhile, etiquetaFinWhile; String condicion; }
 {
-    <MIENTRAS> <PARENTESIS_ABRE> condicion = Expresion() <PARENTESIS_CIERRA> {
+    <MIENTRAS> <PARENTESIS_ABRE> condicion = Expresion() <PARENTESIS_CIERRA> <ABRIR_LLAVE> {
         etiquetaInicioWhile = genEtiqueta();
         etiquetaFinWhile = genEtiqueta();
         codeDirection("label", "", "", etiquetaInicioWhile);
@@ -559,7 +606,7 @@ void SentenciaWhile() :
         codeDirection("label", "", "", etiquetaInicioWhile + "_body");
         cppCode.append("while (" + condicion + ") {\n");
     }
-    BloqueSentencias() {
+    BloqueSentencias()<CERRAR_LLAVE>{
         codeDirection("goto", "", "", etiquetaInicioWhile);
         codeDirection("label", "", "", etiquetaFinWhile);
          cppCode.append("}\n");
@@ -579,8 +626,8 @@ void SentenciaFor() :
         cuadruplos.add(new String[]{"if", expCondicion, "", etiquetaInicioFor});
         cuadruplos.add(new String[]{"goto", "", "", etiquetaFinFor});
     }
-    expIncremento = Asignacion() <PARENTESIS_CIERRA> <HACER>{cppCode.append("for (" + expInicio + "; " + expCondicion + "; " + expIncremento + ") {\n");}
-        BloqueSentencias() {
+    expIncremento = Asignacion() <PARENTESIS_CIERRA> <ABRIR_LLAVE>{cppCode.append("for (" + expInicio + "; " + expCondicion + "; " + expIncremento + ") {\n");}
+        BloqueSentencias() <CERRAR_LLAVE> {
             cuadruplos.add(new String[]{expIncremento, "", "", ""});
             cuadruplos.add(new String[]{"goto", "", "", etiquetaInicioFor});
             cuadruplos.add(new String[]{"label", "", "", etiquetaFinFor});
@@ -594,18 +641,24 @@ String Asignacion() :
     id = <IDENTIFICADOR> <ASIGNACION> exp = Expresion() {
         verificarVariableDeclarada(id.image);
         codeDirection("=", exp, "", id.image);
-        System.out.println(id.image+"="+exp+";");
+        //System.out.println(id.image+"="+exp+";");
 
         return id.image + " = " + exp;
     }
 }
 
-void SentenciaEscribir() :
+void SentenciaEscribir() ://{ String exp;}
 { String exp; }
 {
     <ESCRIBIR> <PARENTESIS_ABRE> exp = Expresion() <PARENTESIS_CIERRA> <PUNTO_Y_COMA> {
         codeDirection("escribir", exp, "", "");
-        cppCode.append("cout << " + exp + " << endl;\n");
+        StringBuilder exp2 = new StringBuilder(exp);
+        // Reemplazar todas las apariciones de "+" por "<<"
+                int start = exp2.indexOf("+");
+                while (start != -1) {
+                    exp2.replace(start, start + "+".length(), "<<");
+                    start = exp2.indexOf("+", start + "<<".length());}
+        cppCode.append("cout << " + exp2.toString() + " << endl;\n");
     }
 }
 
@@ -669,5 +722,5 @@ void Parametros() :
 void BloqueSentencias() :
 {}
 {
-    ( Declaracion() | Sentencia()| Asignacion() )*
+    ( Declaracion() | Sentencia())*
 }
