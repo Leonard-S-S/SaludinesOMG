@@ -1,9 +1,34 @@
 ent x=1;
-if(x==1) then
+if(x==1){
 escribir("x es 1"+x);
-else
-escribir("x no es unu");
+}
+else{
+escribir("x no es unu");}
 
-ent x;
+ent x2;
 escribir("Dame numero");
+leer(x2);
+ent i;
+for(i=1;i<=x;i=i+1){
+escribir("Hola Mundo numero: "+i);
+}
+car r;
+bool k=verdadero;
+ent cont=1;
+real sum=0.0;
+real cali=0.0;
+real prom=0.0;
+while(r==verdadero){
+escribir("Dame calificacion "+cont);
+leer(cali);
+sum=sum+cali;
+cont=cont+1;
+
+escribir("quieres agregar otra? (s/n)");
+leer(r);
+if(r=="n"){
+k=falso;
+}
+}
+prom= sum/cont;
 

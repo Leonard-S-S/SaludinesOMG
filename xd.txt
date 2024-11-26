@@ -1,0 +1,22 @@
+cad nombre;
+ent x;
+ent i;
+bool y=falso;
+cad xd;
+
+escribir("Programa Ejemplo");
+
+
+for(i=0;i<=10;i=i+1){
+escribir("Hola Mundo número: "+i);
+}
+
+escribir("Dame tu nombre");
+leer(nombre);
+
+escribir("Cuántas veces quieres que se imprima?");
+leer(x);
+
+for(i=0;i<x;i=i+1){
+escribir(nombre+" "+i);
+}

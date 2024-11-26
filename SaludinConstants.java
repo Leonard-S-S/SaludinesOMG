@@ -63,45 +63,51 @@ public interface SaludinConstants {
   /** RegularExpression Id. */
   int CARACTER = 31;
   /** RegularExpression Id. */
-  int BOOLEANO = 32;
+  int CAD = 32;
   /** RegularExpression Id. */
-  int TRUE = 33;
+  int BOOLEANO = 33;
   /** RegularExpression Id. */
-  int FALSE = 34;
+  int TRUE = 34;
   /** RegularExpression Id. */
-  int ARR = 35;
+  int FALSE = 35;
   /** RegularExpression Id. */
-  int MATRIZ = 36;
+  int ARR = 36;
   /** RegularExpression Id. */
-  int DEF = 37;
+  int MATRIZ = 37;
   /** RegularExpression Id. */
-  int DOS_PUNTOS = 38;
+  int DEF = 38;
   /** RegularExpression Id. */
-  int CORCHETE_ABRE = 39;
+  int DOS_PUNTOS = 39;
   /** RegularExpression Id. */
-  int CORCHETE_CIERRA = 40;
+  int CORCHETE_ABRE = 40;
   /** RegularExpression Id. */
-  int IDENTIFICADOR = 41;
+  int CORCHETE_CIERRA = 41;
   /** RegularExpression Id. */
-  int LETRA = 42;
+  int IDENTIFICADOR = 42;
   /** RegularExpression Id. */
-  int DIGITO = 43;
+  int LETRA = 43;
   /** RegularExpression Id. */
-  int NUMERO = 44;
+  int DIGITO = 44;
   /** RegularExpression Id. */
-  int CADENA = 45;
+  int NUMERO = 45;
   /** RegularExpression Id. */
-  int CARACTERES = 46;
+  int CADENA = 46;
   /** RegularExpression Id. */
-  int PUNTO_Y_COMA = 47;
+  int CARACTERES = 47;
   /** RegularExpression Id. */
-  int PARENTESIS_ABRE = 48;
+  int PUNTO_Y_COMA = 48;
   /** RegularExpression Id. */
-  int PARENTESIS_CIERRA = 49;
+  int PARENTESIS_ABRE = 49;
   /** RegularExpression Id. */
-  int COMA = 50;
+  int PARENTESIS_CIERRA = 50;
   /** RegularExpression Id. */
-  int ERROR_TOKEN = 51;
+  int ABRIR_LLAVE = 51;
+  /** RegularExpression Id. */
+  int CERRAR_LLAVE = 52;
+  /** RegularExpression Id. */
+  int COMA = 53;
+  /** RegularExpression Id. */
+  int ERROR_TOKEN = 54;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -140,6 +146,7 @@ public interface SaludinConstants {
     "\"ent\"",
     "\"real\"",
     "\"car\"",
+    "\"cad\"",
     "\"bool\"",
     "\"verdadero\"",
     "\"falso\"",
@@ -158,6 +165,8 @@ public interface SaludinConstants {
     "\";\"",
     "\"(\"",
     "\")\"",
+    "\"{\"",
+    "\"}\"",
     "\",\"",
     "<ERROR_TOKEN>",
   };
