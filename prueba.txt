@@ -1,10 +1,7 @@
-ent a = 1+1;
+ent a = 1;
 ent b = 2;
 ent c = 3;
-real x = 4;  
-ent y = 5; 
-ent xd=2;
-bool xd2=xd;
-real xd2;
+ent x;  
+ent y; 
 y=(2*6)+(1-2)/1+2;
-x = (a + b) / (c * y);
+x=(a+b)/(c*y);
