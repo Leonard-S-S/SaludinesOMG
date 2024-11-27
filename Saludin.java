@@ -18,7 +18,7 @@
         // Lista para almacenar los errores semánticos
         private List<String> erroresSemanticos = new ArrayList<String>();
         // Tabla de símbolos para el análisis semántico
-        private Map<String, Integer> tablaSimbolos = new HashMap<String, Integer>();
+        private Map<String, String> tablaSimbolos = new HashMap<String, String>();
         static StringBuilder cppCode = new StringBuilder();
 
 
@@ -287,17 +287,12 @@
         }
 
         // Método para agregar una variable a la tabla de símbolos
-        public void agregarVariable(String nombre, String tipo) {
-            if (tablaSimbolos.containsKey(nombre)) {
-                int count = tablaSimbolos.get(nombre);
-                if (count >= 1) {
-                    agregarErrorSemantico("Variable '" + nombre + "' ya declarada");
-                } else {
-                    tablaSimbolos.put(nombre, count + 1);
-                }
-            } else {
-                tablaSimbolos.put(nombre, 1);
-            }
+        public void agregarVariable(Token nombre, String tipo, int linea, int columna) {
+             if (tablaSimbolos.containsKey(nombre.image)){
+                        erroresSemanticos.add("Error Semantico -> Variable Repetida: " + nombre.image+ " en la linea "+linea+ " columba "+columna);
+                    } else {
+                        tablaSimbolos.put(nombre.image, tipo);
+                    }
         }
 
         // Método para verificar si una variable está declarada
@@ -374,6 +369,30 @@
                    case ARR: return "int";
                    case CAD: return "string"; // o el tipo que usas para arreglos
                    default: return "int";
+               }
+           }
+
+           String determinarTipoExpresion(String exp) {
+               // Verificar si es un número entero
+               if (exp.matches("\u005c\u005cd+")) {
+                   return "ent";
+               }
+               // Verificar si es un número flotante
+               else if (exp.matches("\u005c\u005cd+\u005c\u005c.\u005c\u005cd+")) {
+                   return "real";
+               }
+               // Verificar si es una cadena de texto
+               else if (exp.matches("\u005c".*\u005c"")) {
+                   return "cad";
+               }
+               // Verificar si es un identificador declarado
+               else if (tablaSimbolos.containsKey(exp)) {
+                   return tablaSimbolos.get(exp); // Devuelve el tipo desde la tabla de símbolos
+               }
+               // Si no coincide con ninguna regla, es un tipo desconocido
+               else {
+                   erroresSemanticos.add("Error: No se pudo determinar el tipo de la expresi\u00f3n '" + exp + "'.");
+                   return "unknown";
                }
            }
 
@@ -466,7 +485,7 @@ if (tipo.kind != ARR) {
             } else if (tablaSimbolos.containsKey(id.image)) {
                 agregarErrorSemantico("Arreglo '" + id.image + "' ya declarado en la l\u00ednea " + id.beginLine + ", columna " + id.beginColumn);
             } else {
-                tablaSimbolos.put(id.image, 1);
+                tablaSimbolos.put(id.image, tipo.image);
                 codeDirection("declarar_arr", id.image, size.image, "");
                 cppCode.append("["+size.image+"];\u005cn");
             }
@@ -503,7 +522,7 @@ Token tokenValor = getToken(0);
       ;
     }
     jj_consume_token(PUNTO_Y_COMA);
-agregarVariable(id.image, tipo.image);
+agregarVariable(id, tipo.image, id.beginLine, id.beginColumn);
         cppCode.append(";\u005cn");
   }
 
@@ -736,11 +755,27 @@ verificarVariableDeclarada(id.image);
 
   final public void SentenciaAsignacion() throws ParseException {Token id;
    String exp;
+   String tipoVariable;
+   String tipoExpresion;
     id = jj_consume_token(IDENTIFICADOR);
     jj_consume_token(ASIGNACION);
     exp = Expresion();
     jj_consume_token(PUNTO_Y_COMA);
 verificarVariableDeclarada(id.image);
+            // Obtener el tipo de la variable
+              tipoVariable = tablaSimbolos.get(id.image);
+              if (tipoVariable == null) {
+                  erroresSemanticos.add("Error: La variable '" + id.image + "' no est\u00e1 declarada.");
+              } else {
+                  // Suponiendo que Expresion() devuelve el tipo de la expresión
+              tipoExpresion = determinarTipoExpresion(exp); // Implementa esta función si es necesario
+
+               // Verificar si los tipos coinciden
+              if (!tipoVariable.equals(tipoExpresion)) {
+                  erroresSemanticos.add("Error: Incompatibilidad de tipos al asignar a '" + id.image +
+                   "'. Esperado: " + tipoVariable + ", pero se encontr\u00f3: '" + tipoExpresion+"'"+ "en la linea "+id.beginLine);
+              }
+              }
             codeDirection("=", exp, "", id.image);
             cppCode.append(id.image + "=" + exp + ";");
   }
@@ -756,29 +791,41 @@ verificarVariableDeclarada(id.image);
 agregarErrorLexico("Car\u00e1cter inesperado '" + t.image + "' en la l\u00ednea " + t.beginLine + ", columna " + t.beginColumn);
   }
 
-  final public void declaracionFunciones() throws ParseException {Token id;
+  final public void declaracionFunciones() throws ParseException {Token id, tipo,id2;
+  String exp="";
     jj_consume_token(DEF);
+    tipo = TipoDato();
     id = jj_consume_token(IDENTIFICADOR);
     jj_consume_token(PARENTESIS_ABRE);
     if (jj_2_42(3)) {
-      Parametros();
+      exp = Parametros();
     } else {
       ;
     }
     jj_consume_token(PARENTESIS_CIERRA);
-    jj_consume_token(DOS_PUNTOS);
-if (tablaSimbolos.containsKey(id.image)) {
+    jj_consume_token(ABRIR_LLAVE);
+cppCode.append(tipo.image+" "+ id.image+" ("+exp+")"+" {\u005cn");
+        if (tablaSimbolos.containsKey(id.image)) {
             agregarErrorSemantico("Funci\u00f3n '" + id.image + "' ya declarada.");
         } else {
-            tablaSimbolos.put(id.image, 1);
+            agregarVariable(id, tipo.image, id.beginLine, id.beginColumn);
             codeDirection("funcion", id.image, "", "");
         }
     BloqueSentencias();
-codeDirection("fin_funcion", id.image, "", "");
+    jj_consume_token(RETORNAR);
+    id2 = jj_consume_token(IDENTIFICADOR);
+    jj_consume_token(PUNTO_Y_COMA);
+    jj_consume_token(CERRAR_LLAVE);
+cppCode.append("return "+id2.image+";\u005cn");
+        cppCode.append("}\u005cn");
+        codeDirection("fin_funcion", id.image, "", "");
   }
 
-  final public void Parametros() throws ParseException {
-    jj_consume_token(IDENTIFICADOR);
+  final public String Parametros() throws ParseException {StringBuilder expr = new StringBuilder();
+ Token tipo,id;
+    tipo = TipoDato();
+    id = jj_consume_token(IDENTIFICADOR);
+{expr.append(tipo.image+" "+id.image);}
     label_4:
     while (true) {
       if (jj_2_43(3)) {
@@ -787,8 +834,12 @@ codeDirection("fin_funcion", id.image, "", "");
         break label_4;
       }
       jj_consume_token(COMA);
-      jj_consume_token(IDENTIFICADOR);
+      tipo = TipoDato();
+      id = jj_consume_token(IDENTIFICADOR);
+expr.append(", "+tipo.image+" "+id.image);
     }
+{if ("" != null) return expr.toString();}
+    throw new Error("Missing return statement in function");
   }
 
   final public void BloqueSentencias() throws ParseException {
@@ -1178,111 +1229,11 @@ codeDirection("fin_funcion", id.image, "", "");
     finally { jj_save(45, xla); }
   }
 
-  private boolean jj_3R_12()
- {
-    if (jj_scan_token(ESCRIBIR)) return true;
-    if (jj_scan_token(PARENTESIS_ABRE)) return true;
-    if (jj_3R_17()) return true;
-    return false;
-  }
-
-  private boolean jj_3_46()
- {
-    if (jj_3R_7()) return true;
-    return false;
-  }
-
-  private boolean jj_3_1()
- {
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_3_2()) {
-    jj_scanpos = xsp;
-    if (jj_3_3()) {
-    jj_scanpos = xsp;
-    if (jj_3_4()) return true;
-    }
-    }
-    return false;
-  }
-
-  private boolean jj_3_2()
- {
-    if (jj_3R_6()) return true;
-    return false;
-  }
-
-  private boolean jj_3_27()
- {
-    if (jj_scan_token(MENOR_QUE)) return true;
-    return false;
-  }
-
-  private boolean jj_3R_18()
- {
-    if (jj_3R_19()) return true;
-    Token xsp;
-    while (true) {
-      xsp = jj_scanpos;
-      if (jj_3_30()) { jj_scanpos = xsp; break; }
-    }
-    return false;
-  }
-
   private boolean jj_3_43()
  {
     if (jj_scan_token(COMA)) return true;
+    if (jj_3R_22()) return true;
     if (jj_scan_token(IDENTIFICADOR)) return true;
-    return false;
-  }
-
-  private boolean jj_3R_23()
- {
-    if (jj_scan_token(IDENTIFICADOR)) return true;
-    return false;
-  }
-
-  private boolean jj_3_9()
- {
-    if (jj_3R_13()) return true;
-    return false;
-  }
-
-  private boolean jj_3_45()
- {
-    if (jj_3R_6()) return true;
-    return false;
-  }
-
-  private boolean jj_3_44()
- {
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_3_45()) {
-    jj_scanpos = xsp;
-    if (jj_3_46()) return true;
-    }
-    return false;
-  }
-
-  private boolean jj_3R_17()
- {
-    if (jj_3R_18()) return true;
-    Token xsp;
-    while (true) {
-      xsp = jj_scanpos;
-      if (jj_3_21()) { jj_scanpos = xsp; break; }
-    }
-    return false;
-  }
-
-  private boolean jj_3R_20()
- {
-    Token xsp;
-    while (true) {
-      xsp = jj_scanpos;
-      if (jj_3_44()) { jj_scanpos = xsp; break; }
-    }
     return false;
   }
 
@@ -1292,14 +1243,11 @@ codeDirection("fin_funcion", id.image, "", "");
     return false;
   }
 
-  private boolean jj_3R_21()
+  private boolean jj_3R_16()
  {
+    if (jj_scan_token(DEF)) return true;
+    if (jj_3R_22()) return true;
     if (jj_scan_token(IDENTIFICADOR)) return true;
-    Token xsp;
-    while (true) {
-      xsp = jj_scanpos;
-      if (jj_3_43()) { jj_scanpos = xsp; break; }
-    }
     return false;
   }
 
@@ -1311,17 +1259,22 @@ codeDirection("fin_funcion", id.image, "", "");
     return false;
   }
 
+  private boolean jj_3R_8()
+ {
+    if (jj_scan_token(ERROR_TOKEN)) return true;
+    return false;
+  }
+
   private boolean jj_3_8()
  {
     if (jj_3R_12()) return true;
     return false;
   }
 
-  private boolean jj_3R_16()
+  private boolean jj_3R_15()
  {
-    if (jj_scan_token(DEF)) return true;
-    if (jj_scan_token(IDENTIFICADOR)) return true;
-    if (jj_scan_token(PARENTESIS_ABRE)) return true;
+    if (jj_scan_token(ROMPER)) return true;
+    if (jj_scan_token(PUNTO_Y_COMA)) return true;
     return false;
   }
 
@@ -1343,12 +1296,6 @@ codeDirection("fin_funcion", id.image, "", "");
   private boolean jj_3_32()
  {
     if (jj_scan_token(DIVISION)) return true;
-    return false;
-  }
-
-  private boolean jj_3R_8()
- {
-    if (jj_scan_token(ERROR_TOKEN)) return true;
     return false;
   }
 
@@ -1379,10 +1326,9 @@ codeDirection("fin_funcion", id.image, "", "");
     return false;
   }
 
-  private boolean jj_3R_15()
+  private boolean jj_3_42()
  {
-    if (jj_scan_token(ROMPER)) return true;
-    if (jj_scan_token(PUNTO_Y_COMA)) return true;
+    if (jj_3R_21()) return true;
     return false;
   }
 
@@ -1423,6 +1369,12 @@ codeDirection("fin_funcion", id.image, "", "");
   private boolean jj_3_11()
  {
     if (jj_3R_15()) return true;
+    return false;
+  }
+
+  private boolean jj_3_46()
+ {
+    if (jj_3R_7()) return true;
     return false;
   }
 
@@ -1669,15 +1621,36 @@ codeDirection("fin_funcion", id.image, "", "");
     return false;
   }
 
+  private boolean jj_3_45()
+ {
+    if (jj_3R_6()) return true;
+    return false;
+  }
+
+  private boolean jj_3_44()
+ {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3_45()) {
+    jj_scanpos = xsp;
+    if (jj_3_46()) return true;
+    }
+    return false;
+  }
+
   private boolean jj_3_33()
  {
     if (jj_scan_token(NUMERO)) return true;
     return false;
   }
 
-  private boolean jj_3_42()
+  private boolean jj_3R_20()
  {
-    if (jj_3R_21()) return true;
+    Token xsp;
+    while (true) {
+      xsp = jj_scanpos;
+      if (jj_3_44()) { jj_scanpos = xsp; break; }
+    }
     return false;
   }
 
@@ -1719,6 +1692,86 @@ codeDirection("fin_funcion", id.image, "", "");
   private boolean jj_3_10()
  {
     if (jj_3R_14()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_12()
+ {
+    if (jj_scan_token(ESCRIBIR)) return true;
+    if (jj_scan_token(PARENTESIS_ABRE)) return true;
+    if (jj_3R_17()) return true;
+    return false;
+  }
+
+  private boolean jj_3_1()
+ {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3_2()) {
+    jj_scanpos = xsp;
+    if (jj_3_3()) {
+    jj_scanpos = xsp;
+    if (jj_3_4()) return true;
+    }
+    }
+    return false;
+  }
+
+  private boolean jj_3_2()
+ {
+    if (jj_3R_6()) return true;
+    return false;
+  }
+
+  private boolean jj_3_27()
+ {
+    if (jj_scan_token(MENOR_QUE)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_21()
+ {
+    if (jj_3R_22()) return true;
+    if (jj_scan_token(IDENTIFICADOR)) return true;
+    Token xsp;
+    while (true) {
+      xsp = jj_scanpos;
+      if (jj_3_43()) { jj_scanpos = xsp; break; }
+    }
+    return false;
+  }
+
+  private boolean jj_3R_18()
+ {
+    if (jj_3R_19()) return true;
+    Token xsp;
+    while (true) {
+      xsp = jj_scanpos;
+      if (jj_3_30()) { jj_scanpos = xsp; break; }
+    }
+    return false;
+  }
+
+  private boolean jj_3R_23()
+ {
+    if (jj_scan_token(IDENTIFICADOR)) return true;
+    return false;
+  }
+
+  private boolean jj_3_9()
+ {
+    if (jj_3R_13()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_17()
+ {
+    if (jj_3R_18()) return true;
+    Token xsp;
+    while (true) {
+      xsp = jj_scanpos;
+      if (jj_3_21()) { jj_scanpos = xsp; break; }
+    }
     return false;
   }
 
@@ -1926,7 +1979,7 @@ codeDirection("fin_funcion", id.image, "", "");
   /** Generate ParseException. */
   public ParseException generateParseException() {
     jj_expentries.clear();
-    boolean[] la1tokens = new boolean[55];
+    boolean[] la1tokens = new boolean[56];
     if (jj_kind >= 0) {
       la1tokens[jj_kind] = true;
       jj_kind = -1;
@@ -1943,7 +1996,7 @@ codeDirection("fin_funcion", id.image, "", "");
         }
       }
     }
-    for (int i = 0; i < 55; i++) {
+    for (int i = 0; i < 56; i++) {
       if (la1tokens[i]) {
         jj_expentry = new int[1];
         jj_expentry[0] = i;

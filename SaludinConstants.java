@@ -57,57 +57,59 @@ public interface SaludinConstants {
   /** RegularExpression Id. */
   int ROMPER = 28;
   /** RegularExpression Id. */
-  int ENTERO = 29;
+  int RETORNAR = 29;
   /** RegularExpression Id. */
-  int REAL = 30;
+  int ENTERO = 30;
   /** RegularExpression Id. */
-  int CARACTER = 31;
+  int REAL = 31;
   /** RegularExpression Id. */
-  int CAD = 32;
+  int CARACTER = 32;
   /** RegularExpression Id. */
-  int BOOLEANO = 33;
+  int CAD = 33;
   /** RegularExpression Id. */
-  int TRUE = 34;
+  int BOOLEANO = 34;
   /** RegularExpression Id. */
-  int FALSE = 35;
+  int TRUE = 35;
   /** RegularExpression Id. */
-  int ARR = 36;
+  int FALSE = 36;
   /** RegularExpression Id. */
-  int MATRIZ = 37;
+  int ARR = 37;
   /** RegularExpression Id. */
-  int DEF = 38;
+  int MATRIZ = 38;
   /** RegularExpression Id. */
-  int DOS_PUNTOS = 39;
+  int DEF = 39;
   /** RegularExpression Id. */
-  int CORCHETE_ABRE = 40;
+  int DOS_PUNTOS = 40;
   /** RegularExpression Id. */
-  int CORCHETE_CIERRA = 41;
+  int CORCHETE_ABRE = 41;
   /** RegularExpression Id. */
-  int IDENTIFICADOR = 42;
+  int CORCHETE_CIERRA = 42;
   /** RegularExpression Id. */
-  int LETRA = 43;
+  int IDENTIFICADOR = 43;
   /** RegularExpression Id. */
-  int DIGITO = 44;
+  int LETRA = 44;
   /** RegularExpression Id. */
-  int NUMERO = 45;
+  int DIGITO = 45;
   /** RegularExpression Id. */
-  int CADENA = 46;
+  int NUMERO = 46;
   /** RegularExpression Id. */
-  int CARACTERES = 47;
+  int CADENA = 47;
   /** RegularExpression Id. */
-  int PUNTO_Y_COMA = 48;
+  int CARACTERES = 48;
   /** RegularExpression Id. */
-  int PARENTESIS_ABRE = 49;
+  int PUNTO_Y_COMA = 49;
   /** RegularExpression Id. */
-  int PARENTESIS_CIERRA = 50;
+  int PARENTESIS_ABRE = 50;
   /** RegularExpression Id. */
-  int ABRIR_LLAVE = 51;
+  int PARENTESIS_CIERRA = 51;
   /** RegularExpression Id. */
-  int CERRAR_LLAVE = 52;
+  int ABRIR_LLAVE = 52;
   /** RegularExpression Id. */
-  int COMA = 53;
+  int CERRAR_LLAVE = 53;
   /** RegularExpression Id. */
-  int ERROR_TOKEN = 54;
+  int COMA = 54;
+  /** RegularExpression Id. */
+  int ERROR_TOKEN = 55;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -143,6 +145,7 @@ public interface SaludinConstants {
     "\"leer\"",
     "\"escribir\"",
     "\"break\"",
+    "\"return\"",
     "\"ent\"",
     "\"real\"",
     "\"car\"",

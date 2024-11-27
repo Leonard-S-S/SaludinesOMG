@@ -7,7 +7,7 @@ int x ;
 int i ;
 bool y = false ;
 string xd ;
-cout << "Programa Ejemplo" << endl;
+xd="holam";cout << "Programa Ejemplo" << endl;
 for (i = 0; i <= 10; i = i + 1) {
 cout << "Hola Mundo número: " << i << endl;
 }
