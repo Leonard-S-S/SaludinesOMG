@@ -1,10 +1,8 @@
 cad nombre;
 ent x;
 ent i;
-bool y=falso;
-cad xd;
 
-xd="holam";
+
 escribir("Programa Ejemplo");
 
 

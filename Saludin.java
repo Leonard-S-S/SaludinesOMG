@@ -371,30 +371,84 @@
                    default: return "int";
                }
            }
+String determinarTipoExpresion(String exp) {
+    exp = exp.trim();
 
-           String determinarTipoExpresion(String exp) {
-               // Verificar si es un número entero
-               if (exp.matches("\u005c\u005cd+")) {
-                   return "ent";
-               }
-               // Verificar si es un número flotante
-               else if (exp.matches("\u005c\u005cd+\u005c\u005c.\u005c\u005cd+")) {
-                   return "real";
-               }
-               // Verificar si es una cadena de texto
-               else if (exp.matches("\u005c".*\u005c"")) {
-                   return "cad";
-               }
-               // Verificar si es un identificador declarado
-               else if (tablaSimbolos.containsKey(exp)) {
-                   return tablaSimbolos.get(exp); // Devuelve el tipo desde la tabla de símbolos
-               }
-               // Si no coincide con ninguna regla, es un tipo desconocido
-               else {
-                   erroresSemanticos.add("Error: No se pudo determinar el tipo de la expresi\u00f3n '" + exp + "'.");
-                   return "unknown";
-               }
-           }
+    // 1. Si la expresión está entre paréntesis, la procesamos recursivamente
+    if (exp.startsWith("(") && exp.endsWith(")")) {
+        return determinarTipoExpresion(exp.substring(1, exp.length() - 1).trim());
+    }
+
+    // 2. Si la expresión contiene operadores aritméticos (+, -, *, /)
+    if (exp.matches(".*[+\u005c\u005c-*/].*")) {
+        String tipoResultado = null;
+        // Separamos los operandos, pero no partimos por cada operador
+        String[] operandos = exp.split("(?=[+\u005c\u005c-*/])|(?<=[+\u005c\u005c-*/])");
+
+        for (String operando : operandos) {
+            operando = operando.trim();
+
+            // Si el operando es un identificador, buscamos su tipo
+            String tipoOperando = null;
+            if (tablaSimbolos.containsKey(operando)) {
+                tipoOperando = tablaSimbolos.get(operando);
+            }
+            // Si el operando es un literal entero
+            else if (operando.matches("\u005c\u005cd+")) {
+                tipoOperando = "ent"; // Literal entero, tipo 'ent'
+            }
+            // Si el operando es un literal flotante
+            else if (operando.matches("\u005c\u005cd+\u005c\u005c.\u005c\u005cd+")) {
+                tipoOperando = "real"; // Literal flotante, tipo 'real'
+            }
+            // Si el operando es una cadena
+            else if (operando.matches("\u005c".*\u005c"")) {
+                tipoOperando = "cad"; // Literal String, tipo 'cad'
+            } else {
+                erroresSemanticos.add("Error: Operando inv\u00e1lido en la expresi\u00f3n: '" + operando + "'.");
+                return "unknown";
+            }
+
+            // Si es el primer operando, asignamos su tipo como el resultado
+            if (tipoResultado == null) {
+                tipoResultado = tipoOperando;
+            } else {
+                // Si encontramos una incompatibilidad de tipos, registramos el error
+                if (tipoResultado.equals("real") || tipoOperando.equals("real")) {
+                    tipoResultado = "real"; // Si hay 'real', el resultado es 'real'
+                } else if (!tipoResultado.equals(tipoOperando)) {
+                    erroresSemanticos.add("Error: Incompatibilidad de tipos en la expresi\u00f3n: '" + exp + "'.");
+                    return "unknown";
+                }
+            }
+        }
+        return tipoResultado;
+    }
+
+    // 3. Si no hay operadores, simplemente verificamos si es un identificador o literal
+    if (tablaSimbolos.containsKey(exp)) {
+        return tablaSimbolos.get(exp);
+    }
+
+    // Si es un literal entero
+    if (exp.matches("\u005c\u005cd+")) {
+        return "ent";
+    }
+
+    // Si es un literal flotante
+    if (exp.matches("\u005c\u005cd+\u005c\u005c.\u005c\u005cd+")) {
+        return "real";
+    }
+
+    // Si es una cadena
+    if (exp.matches("\u005c".*\u005c"")) {
+        return "cad";
+    }
+
+    // Si no se pudo determinar el tipo, registramos el error
+    erroresSemanticos.add("Error: No se pudo determinar el tipo de la expresi\u00f3n '" + exp + "'.");
+    return "unknown";
+}
 
   final public void Inicio() throws ParseException {cppCode.append("#include <iostream>\u005cnusing namespace std;\u005cn\u005cnint main() {\u005cn");
     label_1:
@@ -1229,192 +1283,6 @@ expr.append(", "+tipo.image+" "+id.image);
     finally { jj_save(45, xla); }
   }
 
-  private boolean jj_3_43()
- {
-    if (jj_scan_token(COMA)) return true;
-    if (jj_3R_22()) return true;
-    if (jj_scan_token(IDENTIFICADOR)) return true;
-    return false;
-  }
-
-  private boolean jj_3_26()
- {
-    if (jj_scan_token(MAYOR_QUE)) return true;
-    return false;
-  }
-
-  private boolean jj_3R_16()
- {
-    if (jj_scan_token(DEF)) return true;
-    if (jj_3R_22()) return true;
-    if (jj_scan_token(IDENTIFICADOR)) return true;
-    return false;
-  }
-
-  private boolean jj_3R_11()
- {
-    if (jj_scan_token(PARA)) return true;
-    if (jj_scan_token(PARENTESIS_ABRE)) return true;
-    if (jj_3R_23()) return true;
-    return false;
-  }
-
-  private boolean jj_3R_8()
- {
-    if (jj_scan_token(ERROR_TOKEN)) return true;
-    return false;
-  }
-
-  private boolean jj_3_8()
- {
-    if (jj_3R_12()) return true;
-    return false;
-  }
-
-  private boolean jj_3R_15()
- {
-    if (jj_scan_token(ROMPER)) return true;
-    if (jj_scan_token(PUNTO_Y_COMA)) return true;
-    return false;
-  }
-
-  private boolean jj_3_25()
- {
-    if (jj_scan_token(DIFERENTE)) return true;
-    return false;
-  }
-
-  private boolean jj_3_41()
- {
-    if (jj_scan_token(SINO)) return true;
-    if (jj_scan_token(ABRIR_LLAVE)) return true;
-    if (jj_3R_20()) return true;
-    if (jj_scan_token(CERRAR_LLAVE)) return true;
-    return false;
-  }
-
-  private boolean jj_3_32()
- {
-    if (jj_scan_token(DIVISION)) return true;
-    return false;
-  }
-
-  private boolean jj_3_12()
- {
-    if (jj_3R_16()) return true;
-    return false;
-  }
-
-  private boolean jj_3R_10()
- {
-    if (jj_scan_token(MIENTRAS)) return true;
-    if (jj_scan_token(PARENTESIS_ABRE)) return true;
-    if (jj_3R_17()) return true;
-    return false;
-  }
-
-  private boolean jj_3_29()
- {
-    if (jj_scan_token(MENOR_O_IGUAL_QUE)) return true;
-    return false;
-  }
-
-  private boolean jj_3_20()
- {
-    if (jj_scan_token(ASIGNACION)) return true;
-    if (jj_3R_17()) return true;
-    return false;
-  }
-
-  private boolean jj_3_42()
- {
-    if (jj_3R_21()) return true;
-    return false;
-  }
-
-  private boolean jj_3_7()
- {
-    if (jj_3R_11()) return true;
-    return false;
-  }
-
-  private boolean jj_3_24()
- {
-    if (jj_scan_token(IGUAL)) return true;
-    return false;
-  }
-
-  private boolean jj_3R_14()
- {
-    if (jj_scan_token(IDENTIFICADOR)) return true;
-    if (jj_scan_token(ASIGNACION)) return true;
-    if (jj_3R_17()) return true;
-    return false;
-  }
-
-  private boolean jj_3_19()
- {
-    if (jj_scan_token(CORCHETE_ABRE)) return true;
-    if (jj_scan_token(NUMERO)) return true;
-    if (jj_scan_token(CORCHETE_CIERRA)) return true;
-    return false;
-  }
-
-  private boolean jj_3_4()
- {
-    if (jj_3R_8()) return true;
-    return false;
-  }
-
-  private boolean jj_3_11()
- {
-    if (jj_3R_15()) return true;
-    return false;
-  }
-
-  private boolean jj_3_46()
- {
-    if (jj_3R_7()) return true;
-    return false;
-  }
-
-  private boolean jj_3_23()
- {
-    if (jj_scan_token(RESTA)) return true;
-    return false;
-  }
-
-  private boolean jj_3_31()
- {
-    if (jj_scan_token(MULTIPLICACION)) return true;
-    return false;
-  }
-
-  private boolean jj_3R_6()
- {
-    if (jj_3R_22()) return true;
-    if (jj_scan_token(IDENTIFICADOR)) return true;
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_3_19()) jj_scanpos = xsp;
-    xsp = jj_scanpos;
-    if (jj_3_20()) jj_scanpos = xsp;
-    if (jj_scan_token(PUNTO_Y_COMA)) return true;
-    return false;
-  }
-
-  private boolean jj_3_30()
- {
-    Token xsp;
-    xsp = jj_scanpos;
-    if (jj_3_31()) {
-    jj_scanpos = xsp;
-    if (jj_3_32()) return true;
-    }
-    if (jj_3R_19()) return true;
-    return false;
-  }
-
   private boolean jj_3R_9()
  {
     if (jj_scan_token(SI)) return true;
@@ -1772,6 +1640,192 @@ expr.append(", "+tipo.image+" "+id.image);
       xsp = jj_scanpos;
       if (jj_3_21()) { jj_scanpos = xsp; break; }
     }
+    return false;
+  }
+
+  private boolean jj_3_43()
+ {
+    if (jj_scan_token(COMA)) return true;
+    if (jj_3R_22()) return true;
+    if (jj_scan_token(IDENTIFICADOR)) return true;
+    return false;
+  }
+
+  private boolean jj_3_26()
+ {
+    if (jj_scan_token(MAYOR_QUE)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_16()
+ {
+    if (jj_scan_token(DEF)) return true;
+    if (jj_3R_22()) return true;
+    if (jj_scan_token(IDENTIFICADOR)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_11()
+ {
+    if (jj_scan_token(PARA)) return true;
+    if (jj_scan_token(PARENTESIS_ABRE)) return true;
+    if (jj_3R_23()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_8()
+ {
+    if (jj_scan_token(ERROR_TOKEN)) return true;
+    return false;
+  }
+
+  private boolean jj_3_8()
+ {
+    if (jj_3R_12()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_15()
+ {
+    if (jj_scan_token(ROMPER)) return true;
+    if (jj_scan_token(PUNTO_Y_COMA)) return true;
+    return false;
+  }
+
+  private boolean jj_3_25()
+ {
+    if (jj_scan_token(DIFERENTE)) return true;
+    return false;
+  }
+
+  private boolean jj_3_41()
+ {
+    if (jj_scan_token(SINO)) return true;
+    if (jj_scan_token(ABRIR_LLAVE)) return true;
+    if (jj_3R_20()) return true;
+    if (jj_scan_token(CERRAR_LLAVE)) return true;
+    return false;
+  }
+
+  private boolean jj_3_32()
+ {
+    if (jj_scan_token(DIVISION)) return true;
+    return false;
+  }
+
+  private boolean jj_3_12()
+ {
+    if (jj_3R_16()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_10()
+ {
+    if (jj_scan_token(MIENTRAS)) return true;
+    if (jj_scan_token(PARENTESIS_ABRE)) return true;
+    if (jj_3R_17()) return true;
+    return false;
+  }
+
+  private boolean jj_3_29()
+ {
+    if (jj_scan_token(MENOR_O_IGUAL_QUE)) return true;
+    return false;
+  }
+
+  private boolean jj_3_20()
+ {
+    if (jj_scan_token(ASIGNACION)) return true;
+    if (jj_3R_17()) return true;
+    return false;
+  }
+
+  private boolean jj_3_42()
+ {
+    if (jj_3R_21()) return true;
+    return false;
+  }
+
+  private boolean jj_3_7()
+ {
+    if (jj_3R_11()) return true;
+    return false;
+  }
+
+  private boolean jj_3_24()
+ {
+    if (jj_scan_token(IGUAL)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_14()
+ {
+    if (jj_scan_token(IDENTIFICADOR)) return true;
+    if (jj_scan_token(ASIGNACION)) return true;
+    if (jj_3R_17()) return true;
+    return false;
+  }
+
+  private boolean jj_3_19()
+ {
+    if (jj_scan_token(CORCHETE_ABRE)) return true;
+    if (jj_scan_token(NUMERO)) return true;
+    if (jj_scan_token(CORCHETE_CIERRA)) return true;
+    return false;
+  }
+
+  private boolean jj_3_4()
+ {
+    if (jj_3R_8()) return true;
+    return false;
+  }
+
+  private boolean jj_3_11()
+ {
+    if (jj_3R_15()) return true;
+    return false;
+  }
+
+  private boolean jj_3_46()
+ {
+    if (jj_3R_7()) return true;
+    return false;
+  }
+
+  private boolean jj_3_23()
+ {
+    if (jj_scan_token(RESTA)) return true;
+    return false;
+  }
+
+  private boolean jj_3_31()
+ {
+    if (jj_scan_token(MULTIPLICACION)) return true;
+    return false;
+  }
+
+  private boolean jj_3R_6()
+ {
+    if (jj_3R_22()) return true;
+    if (jj_scan_token(IDENTIFICADOR)) return true;
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3_19()) jj_scanpos = xsp;
+    xsp = jj_scanpos;
+    if (jj_3_20()) jj_scanpos = xsp;
+    if (jj_scan_token(PUNTO_Y_COMA)) return true;
+    return false;
+  }
+
+  private boolean jj_3_30()
+ {
+    Token xsp;
+    xsp = jj_scanpos;
+    if (jj_3_31()) {
+    jj_scanpos = xsp;
+    if (jj_3_32()) return true;
+    }
+    if (jj_3R_19()) return true;
     return false;
   }
 
