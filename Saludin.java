@@ -374,38 +374,41 @@
 String determinarTipoExpresion(String exp) {
     exp = exp.trim();
 
-    // 1. Si la expresión está entre paréntesis, la procesamos recursivamente
+    // Si la expresión está entre paréntesis, la procesamos recursivamente
     if (exp.startsWith("(") && exp.endsWith(")")) {
+        // Eliminar paréntesis y procesar la expresión interna
         return determinarTipoExpresion(exp.substring(1, exp.length() - 1).trim());
     }
 
-    // 2. Si la expresión contiene operadores aritméticos (+, -, *, /)
+    // Si la expresión contiene operadores aritméticos (+, -, *, /)
     if (exp.matches(".*[+\u005c\u005c-*/].*")) {
+        // Procesamos la expresión considerando que los operadores son entre dos operandos
         String tipoResultado = null;
-        // Separamos los operandos, pero no partimos por cada operador
-        String[] operandos = exp.split("(?=[+\u005c\u005c-*/])|(?<=[+\u005c\u005c-*/])");
 
-        for (String operando : operandos) {
-            operando = operando.trim();
+        // Aquí vamos a realizar el proceso de identificar el tipo de cada operando
+        String[] partes = exp.split("[+\u005c\u005c-*/]");
+        for (String parte : partes) {
+            parte = parte.trim();
 
-            // Si el operando es un identificador, buscamos su tipo
+            // Identificamos el tipo de cada parte (operando)
             String tipoOperando = null;
-            if (tablaSimbolos.containsKey(operando)) {
-                tipoOperando = tablaSimbolos.get(operando);
+
+            if (tablaSimbolos.containsKey(parte)) {
+                tipoOperando = tablaSimbolos.get(parte);
             }
-            // Si el operando es un literal entero
-            else if (operando.matches("\u005c\u005cd+")) {
-                tipoOperando = "ent"; // Literal entero, tipo 'ent'
+            // Si el operando es un número entero
+            else if (parte.matches("\u005c\u005cd+")) {
+                tipoOperando = "ent"; // Literal entero
             }
-            // Si el operando es un literal flotante
-            else if (operando.matches("\u005c\u005cd+\u005c\u005c.\u005c\u005cd+")) {
-                tipoOperando = "real"; // Literal flotante, tipo 'real'
+            // Si el operando es un número flotante
+            else if (parte.matches("\u005c\u005cd+\u005c\u005c.\u005c\u005cd+")) {
+                tipoOperando = "real"; // Literal flotante
             }
             // Si el operando es una cadena
-            else if (operando.matches("\u005c".*\u005c"")) {
-                tipoOperando = "cad"; // Literal String, tipo 'cad'
+            else if (parte.matches("\u005c".*\u005c"")) {
+                tipoOperando = "cad"; // Literal String
             } else {
-                erroresSemanticos.add("Error: Operando inv\u00e1lido en la expresi\u00f3n: '" + operando + "'.");
+                erroresSemanticos.add("Error: Operando inv\u00e1lido en la expresi\u00f3n: '" + parte + "'.");
                 return "unknown";
             }
 
@@ -415,17 +418,18 @@ String determinarTipoExpresion(String exp) {
             } else {
                 // Si encontramos una incompatibilidad de tipos, registramos el error
                 if (tipoResultado.equals("real") || tipoOperando.equals("real")) {
-                    tipoResultado = "real"; // Si hay 'real', el resultado es 'real'
+                    tipoResultado = "real"; // Si hay un 'real', el resultado es 'real'
                 } else if (!tipoResultado.equals(tipoOperando)) {
                     erroresSemanticos.add("Error: Incompatibilidad de tipos en la expresi\u00f3n: '" + exp + "'.");
                     return "unknown";
                 }
             }
         }
+
         return tipoResultado;
     }
 
-    // 3. Si no hay operadores, simplemente verificamos si es un identificador o literal
+    // Si la expresión no contiene operadores, verificamos si es un identificador o un valor literal
     if (tablaSimbolos.containsKey(exp)) {
         return tablaSimbolos.get(exp);
     }
@@ -1283,26 +1287,6 @@ expr.append(", "+tipo.image+" "+id.image);
     finally { jj_save(45, xla); }
   }
 
-  private boolean jj_3R_9()
- {
-    if (jj_scan_token(SI)) return true;
-    if (jj_scan_token(PARENTESIS_ABRE)) return true;
-    if (jj_3R_17()) return true;
-    return false;
-  }
-
-  private boolean jj_3_6()
- {
-    if (jj_3R_10()) return true;
-    return false;
-  }
-
-  private boolean jj_3_18()
- {
-    if (jj_scan_token(CAD)) return true;
-    return false;
-  }
-
   private boolean jj_3_17()
  {
     if (jj_scan_token(ARR)) return true;
@@ -1826,6 +1810,26 @@ expr.append(", "+tipo.image+" "+id.image);
     if (jj_3_32()) return true;
     }
     if (jj_3R_19()) return true;
+    return false;
+  }
+
+  private boolean jj_3R_9()
+ {
+    if (jj_scan_token(SI)) return true;
+    if (jj_scan_token(PARENTESIS_ABRE)) return true;
+    if (jj_3R_17()) return true;
+    return false;
+  }
+
+  private boolean jj_3_6()
+ {
+    if (jj_3R_10()) return true;
+    return false;
+  }
+
+  private boolean jj_3_18()
+ {
+    if (jj_scan_token(CAD)) return true;
     return false;
   }
 
