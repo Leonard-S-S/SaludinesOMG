@@ -22,7 +22,7 @@ PARSER_BEGIN(Saludin)
         // Lista para almacenar los errores semánticos
         private List<String> erroresSemanticos = new ArrayList<String>();
         // Tabla de símbolos para el análisis semántico
-        private Map<String, Integer> tablaSimbolos = new HashMap<String, Integer>();
+        private Map<String, String> tablaSimbolos = new HashMap<String, String>();
         static StringBuilder cppCode = new StringBuilder();
 
 
@@ -291,17 +291,12 @@ PARSER_BEGIN(Saludin)
         }
 
         // Método para agregar una variable a la tabla de símbolos
-        public void agregarVariable(String nombre, String tipo) {
-            if (tablaSimbolos.containsKey(nombre)) {
-                int count = tablaSimbolos.get(nombre);
-                if (count >= 1) {
-                    agregarErrorSemantico("Variable '" + nombre + "' ya declarada");
-                } else {
-                    tablaSimbolos.put(nombre, count + 1);
-                }
-            } else {
-                tablaSimbolos.put(nombre, 1);
-            }
+        public void agregarVariable(Token nombre, String tipo, int linea, int columna) {
+             if (tablaSimbolos.containsKey(nombre.image)){
+                        erroresSemanticos.add("Error Semantico -> Variable Repetida: " + nombre.image+ " en la linea "+linea+ " columba "+columna);
+                    } else {
+                        tablaSimbolos.put(nombre.image, tipo);
+                    }
         }
 
         // Método para verificar si una variable está declarada
@@ -380,6 +375,32 @@ PARSER_BEGIN(Saludin)
                    default: return "int";
                }
            }
+
+           String determinarTipoExpresion(String exp) {
+               // Verificar si es un número entero
+               if (exp.matches("\\d+")) {
+                   return "ent";
+               }
+               // Verificar si es un número flotante
+               else if (exp.matches("\\d+\\.\\d+")) {
+                   return "real";
+               }
+               // Verificar si es una cadena de texto
+               else if (exp.matches("\".*\"")) {
+                   return "cad";
+               }
+               // Verificar si es un identificador declarado
+               else if (tablaSimbolos.containsKey(exp)) {
+                   return tablaSimbolos.get(exp); // Devuelve el tipo desde la tabla de símbolos
+               }
+               // Si no coincide con ninguna regla, es un tipo desconocido
+               else {
+                   erroresSemanticos.add("Error: No se pudo determinar el tipo de la expresión '" + exp + "'.");
+                   return "unknown";
+               }
+           }
+
+
         /* En caso de que quiera cadena de caracteres
         private boolean esCaracter(Token token) {
             return token.kind == CADENA;  // Aceptar cualquier token de tipo CARACTERES
@@ -418,6 +439,7 @@ TOKEN : /* Operadores */ {
         | < LEER: "leer" >
         | < ESCRIBIR: "escribir" >
         | < ROMPER: "break" >
+        |<RETORNAR: "return">
     }
 
     TOKEN : /* Tipos de datos */ {
@@ -498,7 +520,7 @@ void Declaracion() :
             } else if (tablaSimbolos.containsKey(id.image)) {
                 agregarErrorSemantico("Arreglo '" + id.image + "' ya declarado en la línea " + id.beginLine + ", columna " + id.beginColumn);
             } else {
-                tablaSimbolos.put(id.image, 1);
+                tablaSimbolos.put(id.image, tipo.image);
                 codeDirection("declarar_arr", id.image, size.image, "");
                 cppCode.append("["+size.image+"];\n");
             }
@@ -532,7 +554,7 @@ void Declaracion() :
     }
     )?
     <PUNTO_Y_COMA> {
-        agregarVariable(id.image, tipo.image);
+        agregarVariable(id, tipo.image, id.beginLine, id.beginColumn);
         cppCode.append(";\n");
 
     }
@@ -682,11 +704,27 @@ void SentenciaLeer() :
 void SentenciaAsignacion() :
 { 
    Token id;
-   String exp;}
+   String exp;
+   String tipoVariable;
+   String tipoExpresion;}
 {
     id = <IDENTIFICADOR> <ASIGNACION> exp= Expresion() <PUNTO_Y_COMA> 
     {
             verificarVariableDeclarada(id.image);
+            // Obtener el tipo de la variable
+              tipoVariable = tablaSimbolos.get(id.image);
+              if (tipoVariable == null) {
+                  erroresSemanticos.add("Error: La variable '" + id.image + "' no está declarada.");
+              } else {
+                  // Suponiendo que Expresion() devuelve el tipo de la expresión
+              tipoExpresion = determinarTipoExpresion(exp); // Implementa esta función si es necesario
+
+               // Verificar si los tipos coinciden
+              if (!tipoVariable.equals(tipoExpresion)) {
+                  erroresSemanticos.add("Error: Incompatibilidad de tipos al asignar a '" + id.image +
+                   "'. Esperado: " + tipoVariable + ", pero se encontró: '" + tipoExpresion+"'"+ "en la linea "+id.beginLine);
+              }
+              }
             codeDirection("=", exp, "", id.image);
             cppCode.append(id.image + "=" + exp + ";");
     }
@@ -707,25 +745,34 @@ void ErrorLexico() :
 }
 
 void declaracionFunciones() :
-{ Token id; }
+{ Token id, tipo,id2;
+  String exp=""; }
 {
-    <DEF> id = <IDENTIFICADOR> <PARENTESIS_ABRE> [ Parametros() ] <PARENTESIS_CIERRA> <DOS_PUNTOS> {
+    <DEF> tipo = TipoDato() id = <IDENTIFICADOR> <PARENTESIS_ABRE> [exp=Parametros() ] <PARENTESIS_CIERRA> <ABRIR_LLAVE> {
+        cppCode.append(tipo.image+" "+ id.image+" ("+exp+")"+" {\n");
         if (tablaSimbolos.containsKey(id.image)) {
             agregarErrorSemantico("Función '" + id.image + "' ya declarada.");
         } else {
-            tablaSimbolos.put(id.image, 1);
+            agregarVariable(id, tipo.image, id.beginLine, id.beginColumn);
             codeDirection("funcion", id.image, "", "");
         }
     }
-    BloqueSentencias() {
+    BloqueSentencias() <RETORNAR> id2=<IDENTIFICADOR> <PUNTO_Y_COMA> <CERRAR_LLAVE>{
+        cppCode.append("return "+id2.image+";\n");
+        cppCode.append("}\n");
         codeDirection("fin_funcion", id.image, "", "");
+
     }
 }
 
-void Parametros() :
-{}
+String Parametros() :
+{StringBuilder expr = new StringBuilder();
+ Token tipo,id;}
 {
-    <IDENTIFICADOR> ( <COMA> <IDENTIFICADOR> )*
+   tipo=TipoDato() id=<IDENTIFICADOR>{{expr.append(tipo.image+" "+id.image);}} ( <COMA> tipo=TipoDato() id=<IDENTIFICADOR>{expr.append(", "+tipo.image+" "+id.image);})*{
+    return expr.toString();
+}
+
 }
 
 void BloqueSentencias() :

@@ -1,4 +1,5 @@
 (=, false, , y)
+(=, "holam", , xd)
 (escribir, "Programa Ejemplo", , )
 (label, , , L0)
 (=, 0, , i)
